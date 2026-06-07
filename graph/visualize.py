@@ -19,8 +19,11 @@ links them so the whole thing is one click.
 Deps: pyvis, networkx, matplotlib (see requirements-viz.txt).
 """
 import argparse
+import colorsys
+import math
 import os
-from collections import Counter
+import random
+from collections import Counter, defaultdict
 
 import kuzu
 
@@ -82,6 +85,121 @@ def _save(net, name):
     return path
 
 
+# --------------------------------------------------------------------- states
+def _hex(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
+
+def view_states(c, n=2200):
+    """State-clustered knowledge graph: personas colored + grouped into per-state
+    blobs around the rim, connected through shared occupation hubs in the centre.
+    No ID labels — positions are precomputed so clusters read cleanly, physics
+    off so the layout holds (nodes stay draggable / zoomable)."""
+    base = rows(c.execute(
+        "MATCH (p:Persona)-[:LIVES_IN]->(s:State) "
+        "OPTIONAL MATCH (p)-[:WORKS_AS]->(o:Occupation) "
+        "RETURN p.id AS id, p.name AS name, s.name AS state, o.name AS occ "
+        "LIMIT $n", {"n": n}))
+    if not base:
+        raise SystemExit("no personas with a state")
+
+    states = sorted({r["state"] for r in base})
+    S = len(states)
+    scolor = {st: _hex(i / S, 0.70, 0.98) for i, st in enumerate(states)}
+    # rim placement of state centres
+    R = 1400
+    scenter = {st: (R * math.cos(2 * math.pi * i / S),
+                    R * math.sin(2 * math.pi * i / S)) for i, st in enumerate(states)}
+    # occupation hubs on an inner ring (the connective tissue)
+    occs = sorted({r["occ"] for r in base if r["occ"]})
+    O = max(len(occs), 1)
+    # two concentric inner rings so 30 hubs + labels don't collide
+    ocenter, orad = {}, {}
+    for j, o in enumerate(occs):
+        ring = 500 if j % 2 else 620
+        ang = 2 * math.pi * j / O + 0.3
+        ocenter[o] = (ring * math.cos(ang), ring * math.sin(ang))
+        orad[o] = ring
+
+    rnd = random.Random(7)
+    cluster_r = max(120, 760 / math.sqrt(max(S, 1)))
+
+    net = _net("900px")
+    net.set_options('{"nodes":{"shape":"dot","borderWidth":0},'
+                    '"edges":{"smooth":false},'
+                    '"physics":{"enabled":false},'
+                    '"interaction":{"hideEdgesOnDrag":true,"dragNodes":true,'
+                    '"tooltipDelay":80}}')
+
+    # state hubs (big, bright, labeled)
+    for st in states:
+        x, y = scenter[st]
+        net.add_node(f"S:{st}", label=st, x=x, y=y, size=34, shape="dot",
+                     color=scolor[st], font={"size": 26, "color": "#ffffff",
+                     "strokeWidth": 4, "strokeColor": "#0e1117"},
+                     title=f"State: {st}")
+    # occupation hubs (medium, labeled, neutral)
+    for o in occs:
+        x, y = ocenter[o]
+        net.add_node(f"O:{o}", label=o, x=x, y=y, size=18, shape="square",
+                     color="#c9d1e0", font={"size": 13, "color": "#c9d1e0",
+                     "strokeWidth": 3, "strokeColor": "#0e1117"},
+                     title=f"Occupation: {o}")
+    # personas (small, colored by state, NO label)
+    for r in base:
+        st = r["state"]
+        cx, cy = scenter[st]
+        x = cx + rnd.gauss(0, cluster_r)
+        y = cy + rnd.gauss(0, cluster_r)
+        net.add_node(r["id"], label=" ", x=x, y=y, size=5, shape="dot",
+                     color={"background": scolor[st], "border": scolor[st]},
+                     title=f"{r['name']} · {st}" + (f" · {r['occ']}" if r["occ"] else ""))
+        # tie to its state cluster (same-color sunburst)
+        net.add_edge(r["id"], f"S:{st}",
+                     color={"color": scolor[st], "opacity": 0.22}, width=0.4)
+        # tie to occupation hub -> threads that cross between clusters
+        if r["occ"]:
+            net.add_edge(r["id"], f"O:{r['occ']}",
+                         color={"color": "#8aa0c8", "opacity": 0.16}, width=0.3)
+    print(f"  {len(base):,} personas in {S} state clusters + {O} occupation hubs")
+    html = _save(net, "states.html")
+    _states_png(base, states, scolor, scenter, occs, ocenter, cluster_r)
+    return html
+
+
+def _states_png(base, states, scolor, scenter, occs, ocenter, cluster_r):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    rnd = random.Random(7)
+    fig, ax = plt.subplots(figsize=(20, 20), facecolor="#0e1117")
+    ax.set_facecolor("#0e1117")
+    for r in base:
+        st = r["state"]; cx, cy = scenter[st]
+        x = cx + rnd.gauss(0, cluster_r); y = cy + rnd.gauss(0, cluster_r)
+        ax.plot([x, cx], [y, cy], color=scolor[st], alpha=0.13, lw=0.3, zorder=1)
+        if r["occ"]:
+            ox, oy = ocenter[r["occ"]]
+            ax.plot([x, ox], [y, oy], color="#8aa0c8", alpha=0.06, lw=0.25, zorder=1)
+        ax.scatter(x, y, s=7, color=scolor[st], zorder=2)
+    for st in states:
+        x, y = scenter[st]
+        ax.scatter(x, y, s=900, color=scolor[st], edgecolors="#0e1117", lw=2, zorder=3)
+        ax.text(x, y, st, fontsize=13, color="#fff", ha="center", va="center",
+                fontweight="bold", zorder=4)
+    for o in occs:
+        x, y = ocenter[o]
+        ax.scatter(x, y, s=130, marker="s", color="#c9d1e0", zorder=3)
+        ax.text(x, y + 34, o, fontsize=8, color="#c9d1e0", ha="center", zorder=4)
+    ax.set_aspect("equal"); ax.axis("off")
+    fig.tight_layout()
+    path = os.path.join(OUT, "states.png")
+    fig.savefig(path, dpi=85, facecolor="#0e1117")
+    print("wrote", path)
+    return path
+
+
 # ----------------------------------------------------------------------- full
 def view_full(c, n=1200, edges=("LIVES_IN", "WORKS_AS", "PRACTICES",
                                 "BELONGS_TO", "HOLDS_VALUE", "EXHIBITS",
@@ -104,7 +222,7 @@ def view_full(c, n=1200, edges=("LIVES_IN", "WORKS_AS", "PRACTICES",
 
     pc, ps = PALETTE["Persona"]
     for pid in ids:
-        net.add_node(pid, label="", color=pc, size=6, shape="dot")
+        net.add_node(pid, label=" ", color=pc, size=6, shape="dot")
     dim_seen = set()
     rel_map = {r: t for r, t in P_EDGES}
     for rel in edges:
@@ -370,6 +488,7 @@ def main():
     ap.add_argument("--db-path", default=os.path.join(os.path.dirname(__file__), "persona_graph.kuzu"))
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("schema")
+    stp = sub.add_parser("states"); stp.add_argument("--n", type=int, default=2200)
     fl = sub.add_parser("full"); fl.add_argument("--n", type=int, default=1200)
     fl.add_argument("--png", action="store_true", help="also write a static PNG")
     co = sub.add_parser("cohort")
@@ -383,6 +502,8 @@ def main():
 
     if args.cmd == "schema":
         view_schema()
+    elif args.cmd == "states":
+        view_states(c, n=args.n)
     elif args.cmd == "full":
         view_full(c, n=args.n)
         if args.png:
@@ -394,6 +515,7 @@ def main():
     elif args.cmd == "dashboard":
         view_dashboard(c)
     elif args.cmd == "all":
+        stp = view_states(c, n=2200)
         fp = view_full(c, n=1200)
         sp = view_schema()
         dp = view_dashboard(c)
@@ -401,6 +523,7 @@ def main():
         pid = rows(c.execute("MATCH (p:Persona) RETURN p.id AS id LIMIT 1"))[0]["id"]
         ep = view_ego(c, pid)
         idx = write_index([
+            ("State-clustered graph", "Personas grouped into per-state blobs, linked via occupation hubs", stp),
             ("Full knowledge graph", "1,200 persona nodes wired to every attribute they touch", fp),
             ("Schema / ontology", "Every node + relationship type — the map of the graph", sp),
             ("Population dashboard", "Distributions across the whole corpus", dp),

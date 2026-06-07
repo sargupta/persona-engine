@@ -83,6 +83,7 @@ complementary views that together show the entire work:
 
 | View | What it shows |
 |---|---|
+| **states** | personas grouped into per-state blobs (colored), linked through central occupation hubs — clustered but connected |
 | **full** | the actual node+edge knowledge graph — N personas wired to every attribute hub |
 | **schema** | the ontology meta-graph — every node + relationship type |
 | **cohort** | a real segment of personas clustered through shared dimension hubs |
@@ -93,6 +94,8 @@ complementary views that together show the entire work:
 .venv/bin/pip install -r requirements-viz.txt
 .venv/bin/python visualize.py --db-path persona_graph.kuzu all   # → viz/index.html
 open viz/index.html
+# state-clustered graph (pretty, readable; writes states.html + states.png):
+.venv/bin/python visualize.py --db-path persona_graph.kuzu states --n 3000
 # the dense node+edge graph (push --n as high as the browser survives, ~3k):
 .venv/bin/python visualize.py --db-path persona_graph.kuzu full --n 2000 --png
 # or single views:
