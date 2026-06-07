@@ -1,0 +1,14 @@
+# Full generated corpus (≈800 MB, regenerable from the generator + seed) — not versioned
+personas/personas_*.jsonl
+
+# OS / editor / Python / Node junk
+.DS_Store
+**/.DS_Store
+__pycache__/
+*.pyc
+node_modules/
+*.log
+.ipynb_checkpoints/
+
+# portable git bundle artifact
+*.bundle
