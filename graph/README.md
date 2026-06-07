@@ -103,6 +103,30 @@ open viz/index.html
 .venv/bin/python visualize.py --db-path persona_graph.kuzu ego --id <persona-id>
 ```
 
+### Persona-to-persona interaction graph (`interactions.py`)
+
+The views above show personas linked to *attributes*. To see personas linked to
+**each other** — "who would actually communicate" — `interactions.py` adds the
+missing layer. The base graph has no persona↔persona edges; this builds them.
+
+**Edge = composite affinity** (homophily + communication-feasibility):
+behavioral similarity (decision-model embedding) + shared trust anchor (same
+gatekeeper) + co-location (state/region) + shared language + social stratum
+(community). Candidate pairs are generated sparsely (behavioral KNN + same
+state+community peers), so it scales — never all-pairs.
+
+Then **communities emerge** via Louvain (not imposed by state), are laid out
+group-in-a-box (connected communities sit near each other), colored by
+community and sized by how connected each persona is.
+
+```bash
+.venv/bin/python interactions.py --db-path persona_graph.kuzu --n 4000
+# → viz/interactions.png  (community-colored force layout)
+#   viz/interactions.html (interactive)
+#   viz/communities.json  (each community's profile + key connector / social hub)
+.venv/bin/python interactions.py --db-path persona_graph.kuzu --n 4000 --write-db  # also materialize INTERACTS_WITH edges into Kuzu
+```
+
 Interactive HTML (pyvis) opens in any browser — drag nodes, hover for detail.
 The Colab notebook (cell 4) also renders a cohort subgraph inline, no install.
 
