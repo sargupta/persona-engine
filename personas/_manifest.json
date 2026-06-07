@@ -1,6 +1,6 @@
 {
-  "updated_utc": "2026-06-07T09:08:38+00:00",
-  "total_personas": 100000,
-  "generator": "persona_factory v0.8 (occupation-tier + education gate)",
-  "last_rate_per_min": 151854.9
+  "updated_utc": "2026-06-07T12:58:13+00:00",
+  "total_personas": 1000000,
+  "generator": "persona_factory v1.1 (four-tier; embedded decision_model; gender/childless-bleed scrubbed)",
+  "validation_anomalies": 0
 }

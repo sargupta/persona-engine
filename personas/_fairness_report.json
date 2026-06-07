@@ -1,0 +1,83 @@
+{
+  "total": 1000100,
+  "conditional_independence": [],
+  "stereotype": {
+    "religion": {
+      "base_rate": 0.0,
+      "groups": [
+        {
+          "group": "Hindu",
+          "n": 764117,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Muslim",
+          "n": 158924,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Christian",
+          "n": 32437,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Sikh",
+          "n": 26840,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Other",
+          "n": 9488,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Buddhist",
+          "n": 5292,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "Jain",
+          "n": 3002,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        }
+      ]
+    },
+    "community": {
+      "base_rate": 0.0,
+      "groups": [
+        {
+          "group": "OBC",
+          "n": 406972,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "General",
+          "n": 305798,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "SC",
+          "n": 198338,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        },
+        {
+          "group": "ST",
+          "n": 88992,
+          "demeaning_rate": 0.0,
+          "vs_base": 0.0
+        }
+      ]
+    },
+    "examples": []
+  }
+}

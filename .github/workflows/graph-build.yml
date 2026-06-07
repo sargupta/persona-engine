@@ -1,0 +1,76 @@
+name: graph-build
+
+# Regenerate the persona corpus (deterministic seed), build the embedded Kuzu
+# knowledge graph, and publish it as the `graph-latest` GitHub Release asset.
+# This is the free, no-hosting auto-update path: any change to the generator,
+# the field mapping, or the graph builder rebuilds and republishes the graph.
+#
+# Consume the result anywhere (e.g. Google Colab) by downloading the release
+# asset persona_graph.kuzu.tar.gz — see graph/colab_persona_graph.ipynb.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "generator/persona_factory.py"
+      - "generator/persona_math.py"
+      - "graph/build_kuzu.py"
+      - "graph/persona_fields.py"
+      - "graph/config.py"
+      - "graph/requirements.txt"
+      - "personas/sample_personas.jsonl"
+      - ".github/workflows/graph-build.yml"
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Number of personas to generate"
+        default: "1000000"
+      seed:
+        description: "RNG seed (fixed => reproducible graph; 2026 = canonical corpus)"
+        default: "2026"
+
+concurrency:
+  group: graph-build
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      COUNT: ${{ github.event.inputs.count || '1000000' }}
+      SEED: ${{ github.event.inputs.seed || '2026' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r graph/requirements.txt
+
+      - name: Generate persona corpus (deterministic)
+        run: |
+          python generator/persona_factory.py \
+            --count "$COUNT" --out personas --shard-size 5000 --seed "$SEED"
+          df -h . | tail -1
+
+      - name: Build Kuzu graph + package
+        run: |
+          cd graph
+          python build_kuzu.py --source shards --shards all \
+            --db-path persona_graph.kuzu --package
+          ls -lh persona_graph.kuzu.tar.gz
+
+      - name: Publish graph-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES="Persona knowledge graph (Kuzu). Built from ${COUNT} personas, seed ${SEED}, commit ${GITHUB_SHA}."
+          gh release view graph-latest >/dev/null 2>&1 \
+            || gh release create graph-latest --title "Persona graph (latest)" --notes "$NOTES"
+          gh release edit graph-latest --notes "$NOTES"
+          gh release upload graph-latest graph/persona_graph.kuzu.tar.gz --clobber

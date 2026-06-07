@@ -224,7 +224,11 @@ def compose_memory(age,occ,region,gender):
         if gender=="F": pool+=[("being pulled out of school for the household","being denied a say")]
     if farm: pool+=[(f"the season the {crop} failed and the loan still had to be repaid","big financial risks and new debt"),(f"a mandi price crash that wiped out a year's effort on {crop}","middlemen and traders"),("selling a piece of land to clear an old debt","losing what little they hold")]
     if labour: pool+=[("the lockdown that stopped all work for weeks","a sudden loss of income"),("a contractor who vanished without paying the wages","middlemen and false promises"),("an injury on the worksite with no cover","unplanned expenses and borrowing")]
-    if "tailor" in occ or occ in ("kirana shopkeeper","small trader","tuition teacher"): pool+=[("saving up to buy her first sewing machine / open the shop","losing the customers she has built up"),("a slow season that tested whether the business would survive","an unreliable income"),("the first big order / batch that proved she could do it","squandering a good run")]
+    if "tailor" in occ or occ in ("kirana shopkeeper","small trader","tuition teacher"):
+        first_step=("saving up to buy the first sewing machine" if "tailor" in occ
+                    else "saving up to set up the tuition batches" if occ=="tuition teacher"
+                    else "saving up to open the shop")
+        pool+=[(f"{first_step} and finally working for themselves","losing the customers they have built up"),("a slow season that tested whether the business would survive","an unreliable income"),("the first big order / batch that proved they could do it","squandering a good run")]
     if not young: pool+=[("a medical emergency that drained the savings","unplanned expenses and borrowing"),("an elder whose example set their sense of duty","letting the family down")]
     if occ in ("software professional","business owner","bank employee","doctor","government officer","schoolteacher") or occ=="college student": pool+=[("a job loss or a venture that did not work out","a public career setback"),("cracking a tough exam after years of effort","wasting the opportunity")]
     if not pool: pool=[("a lean year that taught hard lessons about money","big financial risks")]
@@ -273,8 +277,8 @@ def somatic_stressors(o):
 EXH_WINDOW={"mason":"17:00–19:00","construction worker":"17:00–19:00","daily-wage labourer":"17:00–19:00",
  "street vendor":"21:00–22:30","auto/cab driver":"16:00–19:00","delivery rider":"16:00–19:00",
  "domestic worker":"19:00–21:00","homemaker":"12:00–14:00 and after 21:00"}
-VALUE_GAP={"independence":("a digital or official transaction under time pressure","hands the phone or the paperwork to a shopkeeper or male relative to finish it — quietly violating her prized self-reliance"),
- "security":("a festival, a wedding or a child's insistent demand","overspends well beyond the budget and reframes it as duty rather than waste"),
+VALUE_GAP={"independence":("a digital or official transaction under time pressure","hands the phone or the paperwork to a shopkeeper or a trusted relative to finish it — quietly violating their prized self-reliance"),
+ "security":("a festival, a wedding or family pressure to keep up appearances","overspends well beyond the budget and reframes it as duty rather than waste"),
  "family duty":("their own exhaustion or quiet resentment","cuts corners on an obligation, then over-compensates out of guilt"),
  "tradition":("a clearly better economic opportunity","quietly bends the custom when real money is at stake, while still defending it in public"),
  "faith":("desperation, illness or a cash emergency","turns to a moneylender or an unproven fix their stated principles disapprove of"),
@@ -386,7 +390,7 @@ def build_persona():
     if tier=="corporate" and want_status>.5: nvl="Frame offers as a concrete edge or upgrade with clear numbers and a bounded downside; aggressive-growth framing works only if the risk is capped."
     elif tier=="skilled": nvl="Frame as protecting and steadily growing their own income/work, vetted by "+("the women's savings group (SHG)" if gender=="F" else "trusted peers or the local trade association")+" — never a risky leap."
     elif loss_av>2.3 or "security" in values or "family duty" in values: nvl="Any offer must be framed as shielding or protecting what the family already has — never as an aggressive growth play — and ideally vetted by the group or an elder first."
-    elif religiosity>.7: nvl="Framing that aligns with family duty and the children's future lands; pure personal gain does not, and a trusted referral seals it."
+    elif religiosity>.7: nvl="Framing that aligns with family duty and "+("the children's future" if children>0 else "the family's future")+" lands; pure personal gain does not, and a trusted referral seals it."
     else: nvl="Must be framed as reducing risk and helping the family, and confirmed by someone they trust before they will agree."
     cog={"cognitive_load_triggers":trig,"linguistic_survival_profile":ling,"scarcity_behavior_shift":{"condition_flush":flush,"condition_scarce":scarce,"high_risk_window":window},"system1_goal_conflict":conflict,"social_deference_loop":deference,"narrative_validation_loop":nvl}
     can_jargon=tier in("corporate","officer")
@@ -426,7 +430,7 @@ def build_persona():
         else "Verify-with-kinship: any unsolicited call, SMS or app notification about money or law is treated as a threat and ignored until checked face-to-face with a trusted node.")
     if age<30: thm={"classification":"Expansive (exploratory / youth)","time_discount_bias":"Hyperbolic — prefers immediate, exploratory gains and peer alignment","novelty_resistance_index":round(min(1,max(.05,.35-h['O']*.2+(0 if educated else .1))),2)}
     elif age>=58: thm={"classification":"Constricted (legacy-protective / elder)","time_discount_bias":"Intergenerational — preserves assets and health for heirs and emotional equilibrium over exploratory gain","novelty_resistance_index":round(min(1,.7+(.1 if not educated else 0)+(.05 if rural else 0)),2)}
-    else: thm={"classification":"Provisioning (family-focused, mid-horizon)","time_discount_bias":"Discounts toward the children's near-term needs; cautious on far-future bets","novelty_resistance_index":round(min(1,max(.05,.5-h['O']*.2)),2)}
+    else: thm={"classification":"Provisioning (family-focused, mid-horizon)","time_discount_bias":"Discounts toward "+("the children's near-term needs" if children>0 else "the household's near-term needs")+"; cautious on far-future bets","novelty_resistance_index":round(min(1,max(.05,.5-h['O']*.2)),2)}
     cdyn={"somatic_homeostasis":{"chronic_physical_stressors":physical,"circadian_depletion_rate":decay,
             "peak_somatic_exhaustion_window":exh+" — physical discomfort shifts processing from System 2 to blunt System 1; rejects by default to avoid cognitive strain."},
         "macro_environmental_sensitivity":{"inflation_elasticity_coefficient":infl,"ecological_dependency_vectors":eco,
@@ -436,7 +440,9 @@ def build_persona():
     # ---- TIER 4: psychological paradoxes (the irrational soul) ----
     vg=VALUE_GAP.get(values[0],VALUE_GAP["security"])
     if z<.6:
-        desire=random.choice(["an upscale city flat / gated apartment","an expensive car","an English-medium elite school for the kids","branded / foreign goods","a lavish urban lifestyle"])
+        desire_pool=["an upscale city flat / gated apartment","an expensive car","branded / foreign goods","a lavish urban lifestyle"]
+        if children>0: desire_pool.append("an English-medium elite school for the kids")
+        desire=random.choice(desire_pool)
         reject=random.choice(["'City people have no peace — adulterated food, no sleep; our village air and food are pure.'","'Too much money only corrupts the children and the family values.'","'Those flats are just cages stacked on cages — no community, no real life.'","'Show-off spending invites the evil eye; simple living keeps us safe.'"])
     else:
         desire="the lifestyle of the genuinely wealthy / elite circles"; reject="'That world is all stress and no values — I'd rather have balance and my own people.'"
@@ -489,7 +495,7 @@ def write_shard(recs,outdir,idx,mode="a"):
         for r in recs: f.write(json.dumps(r,ensure_ascii=False)+"\n")
 def manifest(outdir,total,rate):
     with open(os.path.join(outdir,"_manifest.json"),"w",encoding="utf-8") as f:
-        json.dump({"updated_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),"total_personas":total,"generator":"persona_factory v0.8 (occupation-tier + education gate)","last_rate_per_min":round(rate,1)},f,indent=2)
+        json.dump({"updated_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),"total_personas":total,"generator":"persona_factory v1.1 (four-tier; embedded decision_model; gender/childless-bleed scrubbed)","last_rate_per_min":round(rate,1)},f,indent=2)
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",default="personas"); ap.add_argument("--count",type=int,default=0); ap.add_argument("--daemon",action="store_true")

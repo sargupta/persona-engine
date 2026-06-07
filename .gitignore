@@ -7,6 +7,9 @@ personas/personas_*.jsonl
 __pycache__/
 *.pyc
 node_modules/
+# virtualenvs (never version — supply-chain + bloat footgun)
+**/.venv/
+**/venv/
 *.log
 .ipynb_checkpoints/
 
