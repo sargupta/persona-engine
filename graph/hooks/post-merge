@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Local auto-sync: after a git pull/merge that touches persona data, refresh
+# the local Neo4j graph. Install with:  bash graph/install_hooks.sh
+set -euo pipefail
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+if git diff-tree -r --name-only ORIG_HEAD HEAD 2>/dev/null | grep -qE '^(personas/|graph/)'; then
+  echo "[graph-sync] persona data changed — updating local graph"
+  cd "$REPO_ROOT/graph"
+  python3 sync.py
+fi

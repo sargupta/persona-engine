@@ -1,0 +1,2 @@
+# Optional local-dev path: server Neo4j (docker compose) for Browser viz.
+neo4j>=5.20,<6
