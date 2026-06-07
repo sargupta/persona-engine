@@ -11,7 +11,7 @@ Usage:
   python3 validate_personas.py personas/ --examples 3
   python3 validate_personas.py personas/ --fail-on-any   # exit 1 if any anomaly
 """
-import argparse, glob, json, os, sys
+import argparse, glob, json, os, re, sys
 
 MANUAL_OCC={"agricultural labourer","small farmer","daily-wage labourer","dairy/livestock worker","domestic worker",
  "street vendor","construction worker","delivery rider","mason","auto/cab driver","tractor/truck driver","factory operator"}
@@ -33,6 +33,8 @@ RULES=[
  ("cross_trade_metaphor","Tailoring 'measure twice, cut once' metaphor on a non-tailor"),
  ("unmarried_homemaker","Persona marked homemaker but unmarried"),
  ("childless_child_reference","Child/childcare reference on a persona with 0 children"),
+ ("gendered_pronoun_bleed","Female pronoun (she/her) on a male persona's free text"),
+ ("occupation_artifact_bleed","Tailor-specific artifact (sewing machine) on a non-tailor"),
  ("null_geography","State / region / language left as 'Other'"),
  ("schema_incomplete","Missing one of the required top-level fields"),
 ]
@@ -57,7 +59,11 @@ def check(p):
     if "tailor" not in occ and "measure twice, cut once" in json.dumps(p): flags.append("cross_trade_metaphor")
     if occ=="homemaker" and p.get("background",{}).get("marital_status")=="unmarried": flags.append("unmarried_homemaker")
     kids=p.get("background",{}).get("children")
-    if kids==0 and ("child" in json.dumps(p.get("motivations",{})).lower() or "childcare" in json.dumps(p.get("daily_rhythm",{})).lower()): flags.append("childless_child_reference")
+    child_scope=json.dumps({k:p.get(k) for k in ("motivations","daily_rhythm","psychological_paradoxes","cognitive_architecture","contextual_dynamics")}).lower()
+    if kids==0 and re.search(r"child's|children's|childcare|the kids|for the kids|kids'",child_scope): flags.append("childless_child_reference")
+    free_text=json.dumps({k:p.get(k) for k in ("background","psychological_paradoxes","cognitive_architecture","contextual_dynamics","stress_and_coping","motivations")}).lower()
+    if idn.get("gender")=="M" and re.search(r"\bher\b|\bshe\b",free_text): flags.append("gendered_pronoun_bleed")
+    if "tailor" not in occ and "sewing machine" in json.dumps(p).lower(): flags.append("occupation_artifact_bleed")
     if idn.get("state")=="Other" or idn.get("region")=="Other" or idn.get("language")=="Other": flags.append("null_geography")
     if any(k not in p for k in REQ): flags.append("schema_incomplete")
     return flags
