@@ -44,6 +44,7 @@ Server-Neo4j was the original plan but can't be hosted free at 1M scale
 |---|---|
 | `build_kuzu.py` | corpus JSONL → Parquet → Kuzu COPY → vector index → `.tar.gz` |
 | `query_kuzu.py` | `segment` / `similar` / `rag` against a Kuzu DB |
+| `visualize.py` | schema / cohort / ego / dashboard → interactive HTML + PNG |
 | `persona_fields.py` | persona JSON → flat row + 11-dim behavioral vector (shared) |
 | `config.py` | paths + behavioral-embedding feature spec |
 | `colab_persona_graph.ipynb` | download release + query + visualize (free, no local) |
@@ -74,6 +75,30 @@ python ../generator/persona_factory.py --count 1000000 --out ../personas --seed 
 .venv/bin/python query_kuzu.py --db-path persona_graph.kuzu similar --id <persona-id> --k 5
 .venv/bin/python query_kuzu.py --db-path persona_graph.kuzu rag --id <persona-id> --k 3
 ```
+
+## Visualize
+
+A 1M-node graph can't be drawn whole, so `visualize.py` renders four
+complementary views that together show the entire work:
+
+| View | What it shows |
+|---|---|
+| **schema** | the ontology meta-graph — every node + relationship type |
+| **cohort** | a real segment of personas clustered through shared dimension hubs |
+| **ego** | one persona's full neighborhood + its behavioral KNN twins |
+| **dashboard** | population-scale distributions (states, jobs, values, scarcity…) |
+
+```bash
+.venv/bin/pip install -r requirements-viz.txt
+.venv/bin/python visualize.py --db-path persona_graph.kuzu all   # → viz/index.html
+open viz/index.html
+# or single views:
+.venv/bin/python visualize.py --db-path persona_graph.kuzu cohort --state "Uttar Pradesh"
+.venv/bin/python visualize.py --db-path persona_graph.kuzu ego --id <persona-id>
+```
+
+Interactive HTML (pyvis) opens in any browser — drag nodes, hover for detail.
+The Colab notebook (cell 4) also renders a cohort subgraph inline, no install.
 
 ## Graph model
 

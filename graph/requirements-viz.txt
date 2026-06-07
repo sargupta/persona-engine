@@ -1,0 +1,4 @@
+# Local visualization (visualize.py): interactive HTML graphs + dashboard PNG.
+pyvis>=0.3
+networkx>=3
+matplotlib>=3.8

@@ -6,3 +6,5 @@ __pycache__/
 *.kuzu/
 *.kuzu
 *.kuzu.tar.gz
+# generated visualizations (regenerate: python visualize.py ... all)
+viz/
