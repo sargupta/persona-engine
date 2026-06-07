@@ -1,0 +1,100 @@
+{
+  "_meta": {
+    "purpose": "Real-world Indian field-experiment take-up rates to backtest the decision model (persona_math.evaluate_offer). Each scenario maps a study population to decision_model() params and the offer to evaluate_offer() params, with the OBSERVED take-up to compare against.",
+    "status": "STARTER — figures are approximate and drawn from widely-cited development-economics studies. VERIFY each `observed_take_up` and citation against the primary paper before using as a hard model-acceptance gate. The model is calibrated for recurring-cost / uncertain-benefit offers (insurance-like), so financial scenarios are primary; others are DIRECTIONAL.",
+    "how_predicted_is_computed": "For each scenario we build the decision_model with the listed population params across many RNG seeds, run evaluate_offer with the listed offer params, and average P_accept. We then report |predicted - observed| and a directional pass."
+  },
+  "scenarios": [
+    {
+      "id": "rainfall_insurance_baseline",
+      "label": "Rainfall/weather index insurance, smallholder farmers, full price",
+      "tier": "primary",
+      "population": {"nccs": "D2", "scarcity": 0.6, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "offer": {"monthly_cost_inr": 120, "benefit_value": 4000, "prob_benefit": 0.25, "framing": "shield", "stakes": 0.6},
+      "observed_take_up": 0.20,
+      "tolerance": 0.15,
+      "source": "Cole, Gine, Tobacman, Topalova, Townsend, Vickery — rainfall insurance demand in Andhra Pradesh/Gujarat; take-up famously low (~5-30%) at market price. VERIFY exact figure."
+    },
+    {
+      "id": "rainfall_insurance_discounted",
+      "label": "Rainfall insurance with a large price discount / subsidy",
+      "tier": "primary",
+      "population": {"nccs": "D2", "scarcity": 0.6, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "offer": {"monthly_cost_inr": 40, "benefit_value": 4000, "prob_benefit": 0.25, "framing": "shield", "stakes": 0.6},
+      "observed_take_up": 0.45,
+      "tolerance": 0.20,
+      "directional_vs": "rainfall_insurance_baseline",
+      "directional": "higher",
+      "source": "Same literature: take-up is strongly price-elastic; a steep discount roughly doubles uptake. VERIFY exact figure."
+    },
+    {
+      "id": "micro_health_insurance_rsby_voluntary",
+      "label": "Voluntary micro health-insurance premium, low-income urban",
+      "tier": "primary",
+      "population": {"nccs": "E1", "scarcity": 0.7, "age": 40, "occupation": "street vendor", "rural": false, "educated": false, "reflective": 0.35, "openness": 0.4},
+      "offer": {"monthly_cost_inr": 90, "benefit_value": 6000, "prob_benefit": 0.2, "framing": "shield", "stakes": 0.65},
+      "observed_take_up": 0.25,
+      "tolerance": 0.18,
+      "source": "Voluntary health micro-insurance demand in India is low double-digits absent subsidy/mandate. VERIFY against specific RSBY/SEWA studies."
+    },
+    {
+      "id": "commitment_savings_uptake",
+      "label": "Commitment savings product offered to low-income savers",
+      "tier": "directional",
+      "population": {"nccs": "D1", "scarcity": 0.55, "age": 38, "occupation": "daily-wage labourer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.5},
+      "offer": {"monthly_cost_inr": 100, "benefit_value": 1500, "prob_benefit": 0.9, "framing": "shield", "stakes": 0.4},
+      "observed_take_up": 0.28,
+      "tolerance": 0.20,
+      "source": "Commitment-savings take-up among the poor is typically ~25-30% when offered (cf. Ashraf-Karlan-Yin SEED, Philippines; Indian analogues vary). DIRECTIONAL — VERIFY."
+    },
+    {
+      "id": "well_off_recurring_service",
+      "label": "Recurring paid digital service offered to urban salaried (control contrast)",
+      "tier": "directional",
+      "population": {"nccs": "B1", "scarcity": 0.15, "age": 33, "occupation": "software professional", "rural": false, "educated": true, "reflective": 0.72, "openness": 0.78},
+      "offer": {"monthly_cost_inr": 199, "benefit_value": 1200, "prob_benefit": 0.8, "framing": "growth", "stakes": 0.45},
+      "observed_take_up": 0.40,
+      "tolerance": 0.25,
+      "source": "No single RCT — included as a CONTRAST: a low-scarcity, high-capital persona should accept a growth-framed recurring service at a materially higher rate than a high-scarcity farmer accepts insurance. Tests directional sensitivity to capital/scarcity, not an exact number."
+    }
+  ],
+  "_sweeps_note": "One-variable monotonicity sweeps are the rigorous directional test: hold a base population+offer fixed, vary ONE param, assert P(accept) moves the empirically-correct direction. Cross-scenario comparisons confound multiple params and must not be used for directional validation.",
+  "sweeps": [
+    {
+      "id": "cost_sweep",
+      "rationale": "Higher recurring cost ⇒ larger loss term ⇒ P(accept) must DECREASE monotonically.",
+      "base_population": {"nccs": "D2", "scarcity": 0.6, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "base_offer": {"monthly_cost_inr": 80, "benefit_value": 4000, "prob_benefit": 0.25, "framing": "shield", "stakes": 0.6},
+      "vary": "monthly_cost_inr",
+      "values": [40, 80, 120, 200, 300],
+      "expect": "decreasing"
+    },
+    {
+      "id": "scarcity_sweep",
+      "rationale": "Higher scarcity ⇒ lower present-bias beta (steeper discounting of the uncertain gain) ⇒ P(accept) must DECREASE.",
+      "base_population": {"nccs": "D2", "scarcity": 0.3, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "base_offer": {"monthly_cost_inr": 100, "benefit_value": 4000, "prob_benefit": 0.3, "framing": "shield", "stakes": 0.6},
+      "vary_population": "scarcity",
+      "values": [0.1, 0.3, 0.5, 0.7, 0.9],
+      "expect": "decreasing"
+    },
+    {
+      "id": "benefit_sweep",
+      "rationale": "Higher benefit value ⇒ larger prob-weighted gain ⇒ P(accept) must INCREASE.",
+      "base_population": {"nccs": "D2", "scarcity": 0.6, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "base_offer": {"monthly_cost_inr": 100, "benefit_value": 1000, "prob_benefit": 0.3, "framing": "shield", "stakes": 0.6},
+      "vary": "benefit_value",
+      "values": [1000, 3000, 6000, 10000, 20000],
+      "expect": "increasing"
+    },
+    {
+      "id": "framing_shield_beats_growth",
+      "rationale": "A loss-framed 'shield' (protect what you have) is accepted more than a gain-framed 'growth' offer, all else equal (prospect-theory loss aversion).",
+      "base_population": {"nccs": "D2", "scarcity": 0.6, "age": 45, "occupation": "small farmer", "rural": true, "educated": false, "reflective": 0.4, "openness": 0.45},
+      "base_offer": {"monthly_cost_inr": 100, "benefit_value": 4000, "prob_benefit": 0.3, "stakes": 0.6},
+      "vary": "framing",
+      "values": ["growth", "neutral", "shield"],
+      "expect": "increasing"
+    }
+  ]
+}

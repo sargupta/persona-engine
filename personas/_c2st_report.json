@@ -1,0 +1,69 @@
+{
+  "mode": "self_test",
+  "n_real": 6000,
+  "n_synthetic": 6000,
+  "auc": 0.494,
+  "auc_threshold": 0.6,
+  "top_discriminating_features": [
+    {
+      "feature": "identity.state=Goa",
+      "weight": 1.99
+    },
+    {
+      "feature": "identity.community=General",
+      "weight": 1.538
+    },
+    {
+      "feature": "identity.community=ST",
+      "weight": -1.205
+    },
+    {
+      "feature": "identity.gender=Other",
+      "weight": 1.082
+    },
+    {
+      "feature": "identity.class_nccs=B2",
+      "weight": -1.063
+    },
+    {
+      "feature": "identity.income_band=middle",
+      "weight": -1.063
+    },
+    {
+      "feature": "identity.state=Tripura",
+      "weight": -1.004
+    },
+    {
+      "feature": "identity.gender=M",
+      "weight": -0.893
+    },
+    {
+      "feature": "identity.state=Jharkhand",
+      "weight": -0.891
+    },
+    {
+      "feature": "identity.state=West Bengal",
+      "weight": 0.874
+    },
+    {
+      "feature": "identity.income_band=very poor",
+      "weight": 0.824
+    },
+    {
+      "feature": "identity.state=Tamil Nadu",
+      "weight": -0.764
+    },
+    {
+      "feature": "identity.region=North",
+      "weight": 0.72
+    },
+    {
+      "feature": "identity.religion=Christian",
+      "weight": 0.691
+    },
+    {
+      "feature": "identity.state=Kerala",
+      "weight": 0.66
+    }
+  ]
+}

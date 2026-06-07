@@ -1,6 +1,6 @@
 {
-  "total_personas": 100000,
-  "unique_ids": 100000,
+  "total_personas": 1000000,
+  "unique_ids": 1000000,
   "distinct_states": 24,
   "states": [
     "Andhra/Telangana",
@@ -28,7 +28,27 @@
     "Uttarakhand",
     "West Bengal"
   ],
-  "corpus_size_mb": 838.2,
+  "tier_distribution": {
+    "corporate": 79719,
+    "manual": 557257,
+    "officer": 74253,
+    "skilled": 288771
+  },
+  "gender_distribution": {
+    "F": 484596,
+    "M": 510341,
+    "Other": 5063
+  },
+  "religion_distribution": {
+    "Hindu": 764048,
+    "Muslim": 158900,
+    "Christian": 32436,
+    "Sikh": 26836,
+    "Other": 9487,
+    "Buddhist": 5291,
+    "Jain": 3002
+  },
+  "corpus_size_mb": 9171.6,
   "validation_anomalies": 0,
-  "generator": "v1.0 (four-tier; occupation-tier + education gate; intra-field consistency; real geography)"
+  "generator": "v1.1 (four-tier; embedded decision_model; intra-field consistency; real geography; gender/childless bleed scrubbed)"
 }

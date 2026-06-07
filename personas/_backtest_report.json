@@ -1,0 +1,123 @@
+{
+  "results": {
+    "rainfall_insurance_baseline": {
+      "predicted": 0.33,
+      "observed": 0.2,
+      "abs_error": 0.13,
+      "tolerance": 0.15,
+      "pass": true,
+      "tier": "primary"
+    },
+    "rainfall_insurance_discounted": {
+      "predicted": 0.338,
+      "observed": 0.45,
+      "abs_error": 0.112,
+      "tolerance": 0.2,
+      "pass": true,
+      "tier": "primary"
+    },
+    "micro_health_insurance_rsby_voluntary": {
+      "predicted": 0.337,
+      "observed": 0.25,
+      "abs_error": 0.087,
+      "tolerance": 0.18,
+      "pass": true,
+      "tier": "primary"
+    },
+    "commitment_savings_uptake": {
+      "predicted": 0.335,
+      "observed": 0.28,
+      "abs_error": 0.055,
+      "tolerance": 0.2,
+      "pass": true,
+      "tier": "directional"
+    },
+    "well_off_recurring_service": {
+      "predicted": 0.142,
+      "observed": 0.4,
+      "abs_error": 0.258,
+      "tolerance": 0.25,
+      "pass": false,
+      "tier": "directional"
+    }
+  },
+  "directional": [
+    {
+      "id": "cost_sweep",
+      "values": [
+        40,
+        80,
+        120,
+        200,
+        300
+      ],
+      "curve": [
+        0.338,
+        0.334,
+        0.33,
+        0.322,
+        0.313
+      ],
+      "expect": "decreasing",
+      "pass": true
+    },
+    {
+      "id": "scarcity_sweep",
+      "values": [
+        0.1,
+        0.3,
+        0.5,
+        0.7,
+        0.9
+      ],
+      "curve": [
+        0.343,
+        0.339,
+        0.335,
+        0.332,
+        0.328
+      ],
+      "expect": "decreasing",
+      "pass": true
+    },
+    {
+      "id": "benefit_sweep",
+      "values": [
+        1000,
+        3000,
+        6000,
+        10000,
+        20000
+      ],
+      "curve": [
+        0.319,
+        0.329,
+        0.342,
+        0.356,
+        0.382
+      ],
+      "expect": "increasing",
+      "pass": true
+    },
+    {
+      "id": "framing_shield_beats_growth",
+      "values": [
+        "growth",
+        "neutral",
+        "shield"
+      ],
+      "curve": [
+        0.186,
+        0.256,
+        0.334
+      ],
+      "expect": "increasing",
+      "pass": true
+    }
+  ],
+  "brier_primary": 0.012346217893518521,
+  "n_pass": 4,
+  "n_total": 5,
+  "directional_pass": true,
+  "samples": 120
+}

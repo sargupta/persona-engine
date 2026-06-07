@@ -1,0 +1,487 @@
+{
+  "total_personas": 1000100,
+  "marginals": {
+    "identity.age_band": {
+      "distribution": {
+        "26-35": 0.23702,
+        "46-60": 0.21333,
+        "18-25": 0.20412,
+        "36-45": 0.20316,
+        "60+": 0.14238
+      },
+      "entropy_normalised": 0.9919
+    },
+    "identity.gender": {
+      "distribution": {
+        "M": 0.51033,
+        "F": 0.4846,
+        "Other": 0.00506
+      },
+      "entropy_normalised": 0.6564,
+      "distinct": 3
+    },
+    "identity.state": {
+      "distribution": {
+        "Uttar Pradesh": 0.16511,
+        "Maharashtra": 0.09197,
+        "Bihar": 0.08624,
+        "West Bengal": 0.07461,
+        "Andhra/Telangana": 0.0706,
+        "Madhya Pradesh": 0.06023,
+        "Rajasthan": 0.05719,
+        "Tamil Nadu": 0.05707,
+        "Karnataka": 0.05116,
+        "Gujarat": 0.05021,
+        "Odisha": 0.0348,
+        "Kerala": 0.02795,
+        "Jharkhand": 0.02689,
+        "Assam": 0.02589,
+        "Chhattisgarh": 0.02509,
+        "Punjab": 0.02308,
+        "Haryana": 0.0209,
+        "Delhi": 0.01402,
+        "Jammu & Kashmir": 0.01112,
+        "Uttarakhand": 0.00979,
+        "Himachal Pradesh": 0.00703,
+        "Tripura": 0.00406,
+        "Manipur": 0.00297,
+        "Goa": 0.002
+      },
+      "entropy_normalised": 0.8869,
+      "distinct": 24
+    },
+    "identity.region": {
+      "distribution": {
+        "North": 0.30825,
+        "East": 0.22255,
+        "South": 0.20678,
+        "West": 0.14418,
+        "Central": 0.08533,
+        "Northeast": 0.03292
+      },
+      "entropy_normalised": 0.9068,
+      "distinct": 6
+    },
+    "identity.setting": {
+      "distribution": {
+        "rural": 0.68652,
+        "urban": 0.31348
+      },
+      "entropy_normalised": 0.8972,
+      "distinct": 2,
+      "tv_vs_reference": 0.0015,
+      "tv_status": "OK"
+    },
+    "identity.religion": {
+      "distribution": {
+        "Hindu": 0.76404,
+        "Muslim": 0.15891,
+        "Christian": 0.03243,
+        "Sikh": 0.02684,
+        "Other": 0.00949,
+        "Buddhist": 0.00529,
+        "Jain": 0.003
+      },
+      "entropy_normalised": 0.4089,
+      "distinct": 7,
+      "tv_vs_reference": 0.0367,
+      "tv_status": "OK"
+    },
+    "identity.community": {
+      "distribution": {
+        "OBC": 0.40693,
+        "General": 0.30577,
+        "SC": 0.19832,
+        "ST": 0.08898
+      },
+      "entropy_normalised": 0.912,
+      "distinct": 4
+    },
+    "identity.occupation_tier": {
+      "distribution": {
+        "manual": 0.55726,
+        "skilled": 0.28877,
+        "corporate": 0.07972,
+        "officer": 0.07425
+      },
+      "entropy_normalised": 0.7785,
+      "distinct": 4
+    },
+    "identity.education": {
+      "distribution": {
+        "Class 10": 0.30058,
+        "Class 12": 0.24912,
+        "some schooling": 0.22856,
+        "a graduate degree": 0.13591,
+        "no formal schooling": 0.05175,
+        "a postgraduate degree": 0.03407
+      },
+      "entropy_normalised": 0.8843,
+      "distinct": 6
+    },
+    "identity.class_nccs": {
+      "distribution": {
+        "C1": 0.22403,
+        "C2": 0.21929,
+        "B2": 0.1653,
+        "D": 0.1519,
+        "B1": 0.05315,
+        "E1": 0.04508,
+        "A3": 0.03602,
+        "E3": 0.03012,
+        "E2": 0.02848,
+        "A1": 0.02449,
+        "A2": 0.02214
+      },
+      "entropy_normalised": 0.8546,
+      "distinct": 11
+    },
+    "identity.income_band": {
+      "distribution": {
+        "lower-middle": 0.44333,
+        "middle": 0.1653,
+        "poor": 0.1519,
+        "very poor": 0.10367,
+        "upper-middle": 0.08917,
+        "affluent": 0.04663
+      },
+      "entropy_normalised": 0.8583,
+      "distinct": 6
+    },
+    "background.marital_status": {
+      "distribution": {
+        "married": 0.87379,
+        "unmarried": 0.12621
+      },
+      "entropy_normalised": 0.547,
+      "distinct": 2
+    },
+    "background.household": {
+      "distribution": {
+        "nuclear family": 0.58862,
+        "joint family": 0.41138
+      },
+      "entropy_normalised": 0.9772,
+      "distinct": 2
+    }
+  },
+  "joints": {
+    "identity.occupation_tier x identity.education": {
+      "distinct_cells": 13,
+      "top_cells": [
+        {
+          "cell": [
+            "manual",
+            "some schooling"
+          ],
+          "share": 0.22856
+        },
+        {
+          "cell": [
+            "manual",
+            "Class 10"
+          ],
+          "share": 0.18972
+        },
+        {
+          "cell": [
+            "skilled",
+            "Class 12"
+          ],
+          "share": 0.1323
+        },
+        {
+          "cell": [
+            "skilled",
+            "Class 10"
+          ],
+          "share": 0.11086
+        },
+        {
+          "cell": [
+            "manual",
+            "Class 12"
+          ],
+          "share": 0.08723
+        },
+        {
+          "cell": [
+            "corporate",
+            "a graduate degree"
+          ],
+          "share": 0.06152
+        },
+        {
+          "cell": [
+            "manual",
+            "no formal schooling"
+          ],
+          "share": 0.05175
+        },
+        {
+          "cell": [
+            "skilled",
+            "a graduate degree"
+          ],
+          "share": 0.03887
+        },
+        {
+          "cell": [
+            "officer",
+            "a graduate degree"
+          ],
+          "share": 0.03552
+        },
+        {
+          "cell": [
+            "officer",
+            "Class 12"
+          ],
+          "share": 0.02959
+        },
+        {
+          "cell": [
+            "corporate",
+            "a postgraduate degree"
+          ],
+          "share": 0.0182
+        },
+        {
+          "cell": [
+            "officer",
+            "a postgraduate degree"
+          ],
+          "share": 0.00914
+        }
+      ],
+      "entropy_normalised": 0.8578
+    },
+    "background.marital_status x children_band": {
+      "distinct_cells": 5,
+      "top_cells": [
+        {
+          "cell": [
+            "married",
+            "2"
+          ],
+          "share": 0.26233
+        },
+        {
+          "cell": [
+            "married",
+            "3+"
+          ],
+          "share": 0.26185
+        },
+        {
+          "cell": [
+            "married",
+            "1"
+          ],
+          "share": 0.21849
+        },
+        {
+          "cell": [
+            "married",
+            "0"
+          ],
+          "share": 0.13112
+        },
+        {
+          "cell": [
+            "unmarried",
+            "0"
+          ],
+          "share": 0.12621
+        }
+      ],
+      "entropy_normalised": 0.9704
+    },
+    "identity.state x identity.religion": {
+      "distinct_cells": 133,
+      "top_cells": [
+        {
+          "cell": [
+            "Uttar Pradesh",
+            "Hindu"
+          ],
+          "share": 0.13131
+        },
+        {
+          "cell": [
+            "Maharashtra",
+            "Hindu"
+          ],
+          "share": 0.0731
+        },
+        {
+          "cell": [
+            "Bihar",
+            "Hindu"
+          ],
+          "share": 0.06845
+        },
+        {
+          "cell": [
+            "Andhra/Telangana",
+            "Hindu"
+          ],
+          "share": 0.0562
+        },
+        {
+          "cell": [
+            "West Bengal",
+            "Hindu"
+          ],
+          "share": 0.05223
+        },
+        {
+          "cell": [
+            "Tamil Nadu",
+            "Hindu"
+          ],
+          "share": 0.04974
+        },
+        {
+          "cell": [
+            "Madhya Pradesh",
+            "Hindu"
+          ],
+          "share": 0.04793
+        },
+        {
+          "cell": [
+            "Rajasthan",
+            "Hindu"
+          ],
+          "share": 0.04538
+        },
+        {
+          "cell": [
+            "Karnataka",
+            "Hindu"
+          ],
+          "share": 0.04066
+        },
+        {
+          "cell": [
+            "Gujarat",
+            "Hindu"
+          ],
+          "share": 0.03983
+        },
+        {
+          "cell": [
+            "Odisha",
+            "Hindu"
+          ],
+          "share": 0.02783
+        },
+        {
+          "cell": [
+            "Uttar Pradesh",
+            "Muslim"
+          ],
+          "share": 0.02362
+        }
+      ],
+      "entropy_normalised": 0.7239
+    },
+    "identity.gender x identity.occupation_tier": {
+      "distinct_cells": 12,
+      "top_cells": [
+        {
+          "cell": [
+            "F",
+            "manual"
+          ],
+          "share": 0.31245
+        },
+        {
+          "cell": [
+            "M",
+            "manual"
+          ],
+          "share": 0.24244
+        },
+        {
+          "cell": [
+            "M",
+            "skilled"
+          ],
+          "share": 0.18443
+        },
+        {
+          "cell": [
+            "F",
+            "skilled"
+          ],
+          "share": 0.10249
+        },
+        {
+          "cell": [
+            "M",
+            "officer"
+          ],
+          "share": 0.04263
+        },
+        {
+          "cell": [
+            "M",
+            "corporate"
+          ],
+          "share": 0.04083
+        },
+        {
+          "cell": [
+            "F",
+            "corporate"
+          ],
+          "share": 0.03849
+        },
+        {
+          "cell": [
+            "F",
+            "officer"
+          ],
+          "share": 0.03117
+        },
+        {
+          "cell": [
+            "Other",
+            "manual"
+          ],
+          "share": 0.00237
+        },
+        {
+          "cell": [
+            "Other",
+            "skilled"
+          ],
+          "share": 0.00184
+        },
+        {
+          "cell": [
+            "Other",
+            "officer"
+          ],
+          "share": 0.00045
+        },
+        {
+          "cell": [
+            "Other",
+            "corporate"
+          ],
+          "share": 0.00039
+        }
+      ],
+      "entropy_normalised": 0.7177
+    }
+  },
+  "flags": [
+    "MODE_COLLAPSE identity.setting: 'rural' = 68.7% of corpus",
+    "MODE_COLLAPSE identity.religion: 'Hindu' = 76.4% of corpus",
+    "LOW_ENTROPY identity.religion: normalised entropy 0.41 (<0.5)",
+    "MODE_COLLAPSE background.marital_status: 'married' = 87.4% of corpus"
+  ]
+}
