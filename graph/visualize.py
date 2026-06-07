@@ -82,6 +82,92 @@ def _save(net, name):
     return path
 
 
+# ----------------------------------------------------------------------- full
+def view_full(c, n=1200, edges=("LIVES_IN", "WORKS_AS", "PRACTICES",
+                                "BELONGS_TO", "HOLDS_VALUE", "EXHIBITS",
+                                "TRUSTS", "HAS_EDUCATION", "HAS_INCOME_BAND")):
+    """A real knowledge-graph hairball: N persona nodes wired to every
+    attribute node they touch. This is the node+edge graph, just sampled
+    (a browser can't paint 1M nodes — push `--n` as high as it survives)."""
+    ids = [r["id"] for r in rows(c.execute(
+        "MATCH (p:Persona) RETURN p.id AS id LIMIT $n", {"n": n}))]
+    idset = set(ids)
+    net = _net("900px")
+    # physics tuned for big graphs: stabilize then freeze (overrides _net)
+    net.set_options('{"nodes":{"shape":"dot"},'
+                    '"edges":{"smooth":false,"color":{"opacity":0.25}},'
+                    '"physics":{"barnesHut":{"gravitationalConstant":-3500,'
+                    '"springLength":60,"springConstant":0.008,"damping":0.5},'
+                    '"stabilization":{"iterations":120},"minVelocity":2,'
+                    '"timestep":0.5},'
+                    '"interaction":{"hideEdgesOnDrag":true,"tooltipDelay":80}}')
+
+    pc, ps = PALETTE["Persona"]
+    for pid in ids:
+        net.add_node(pid, label="", color=pc, size=6, shape="dot")
+    dim_seen = set()
+    rel_map = {r: t for r, t in P_EDGES}
+    for rel in edges:
+        tgt = rel_map[rel]
+        col, sz = PALETTE[tgt]
+        for r in rows(c.execute(
+                f"MATCH (p:Persona)-[:{rel}]->(d:{tgt}) "
+                f"WHERE p.id IN $ids RETURN p.id AS pid, d.name AS n",
+                {"ids": ids})):
+            if r["n"] is None or r["pid"] not in idset:
+                continue
+            nid = f"{tgt}:{r['n']}"
+            if nid not in dim_seen:
+                net.add_node(nid, label=r["n"], color=col, size=sz + 6,
+                             shape="dot", title=f"{tgt}: {r['n']}")
+                dim_seen.add(nid)
+            net.add_edge(r["pid"], nid, color="#33405a")
+    print(f"  {len(ids):,} personas + {len(dim_seen)} attribute hubs")
+    return _save(net, f"full_{n}.html")
+
+
+def view_full_png(c, n=500):
+    """Static node+edge render of the knowledge graph (for docs / quick look)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import networkx as nx
+
+    ids = [r["id"] for r in rows(c.execute(
+        "MATCH (p:Persona) RETURN p.id AS id LIMIT $n", {"n": n}))]
+    G = nx.Graph()
+    for i in ids:
+        G.add_node(i, kind="p")
+    rels = [("LIVES_IN", "State"), ("WORKS_AS", "Occupation"),
+            ("PRACTICES", "Religion"), ("BELONGS_TO", "Community"),
+            ("HOLDS_VALUE", "Value"), ("EXHIBITS", "Trait"),
+            ("TRUSTS", "Gatekeeper"), ("HAS_EDUCATION", "EducationLevel")]
+    hubs = set()
+    for rel, tgt in rels:
+        for r in rows(c.execute(
+                f"MATCH (p:Persona)-[:{rel}]->(d:{tgt}) WHERE p.id IN $ids "
+                f"RETURN p.id AS p, d.name AS n", {"ids": ids})):
+            if r["n"] is None:
+                continue
+            h = f"{tgt}:{r['n']}"
+            hubs.add(h); G.add_node(h, kind="h"); G.add_edge(r["p"], h)
+    pos = nx.spring_layout(G, k=0.15, iterations=40, seed=1)
+    pn = [x for x in G if G.nodes[x]["kind"] == "p"]
+    hn = [x for x in G if G.nodes[x]["kind"] == "h"]
+    plt.figure(figsize=(20, 20), facecolor="#0e1117")
+    nx.draw_networkx_edges(G, pos, alpha=0.12, edge_color="#5b8def", width=0.4)
+    nx.draw_networkx_nodes(G, pos, nodelist=pn, node_size=14, node_color="#5b8def")
+    nx.draw_networkx_nodes(G, pos, nodelist=hn, node_size=240, node_color="#f15bb5")
+    nx.draw_networkx_labels(G, pos, labels={h: h.split(":", 1)[1] for h in hn},
+                            font_size=7, font_color="#ffd166")
+    plt.axis("off"); plt.tight_layout()
+    os.makedirs(OUT, exist_ok=True)
+    path = os.path.join(OUT, "full_static.png")
+    plt.savefig(path, dpi=90, facecolor="#0e1117")
+    print(f"  {G.number_of_nodes()} nodes, {G.number_of_edges()} edges -> {path}")
+    return path
+
+
 # --------------------------------------------------------------------- schema
 def view_schema():
     """The ontology: every node type and how they connect. The 'map' of the work."""
@@ -284,6 +370,8 @@ def main():
     ap.add_argument("--db-path", default=os.path.join(os.path.dirname(__file__), "persona_graph.kuzu"))
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("schema")
+    fl = sub.add_parser("full"); fl.add_argument("--n", type=int, default=1200)
+    fl.add_argument("--png", action="store_true", help="also write a static PNG")
     co = sub.add_parser("cohort")
     co.add_argument("--state"); co.add_argument("--community")
     co.add_argument("--tier"); co.add_argument("--limit", type=int, default=40)
@@ -295,6 +383,10 @@ def main():
 
     if args.cmd == "schema":
         view_schema()
+    elif args.cmd == "full":
+        view_full(c, n=args.n)
+        if args.png:
+            view_full_png(c, n=min(args.n, 600))
     elif args.cmd == "cohort":
         view_cohort(c, args.state, args.community, args.tier, args.limit)
     elif args.cmd == "ego":
@@ -302,12 +394,14 @@ def main():
     elif args.cmd == "dashboard":
         view_dashboard(c)
     elif args.cmd == "all":
+        fp = view_full(c, n=1200)
         sp = view_schema()
         dp = view_dashboard(c)
         cp = view_cohort(c, state=args.state)
         pid = rows(c.execute("MATCH (p:Persona) RETURN p.id AS id LIMIT 1"))[0]["id"]
         ep = view_ego(c, pid)
         idx = write_index([
+            ("Full knowledge graph", "1,200 persona nodes wired to every attribute they touch", fp),
             ("Schema / ontology", "Every node + relationship type — the map of the graph", sp),
             ("Population dashboard", "Distributions across the whole corpus", dp),
             (f"Cohort: {args.state}", "Real personas clustered through shared hubs", cp),
