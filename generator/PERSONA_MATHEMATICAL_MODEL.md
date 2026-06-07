@@ -1,6 +1,8 @@
-# The Mathematical Model of Persona Generation
+# The Mathematical Model of Persona Generation (v1.1)
 
-This document specifies the persona engine as a **formal probabilistic and computational model**, not a template script. A persona is a sample from a defined joint distribution; every cognitive and behavioural parameter is given by an explicit equation grounded in the literature (prospect theory, hyperbolic discounting, scarcity theory, drift-diffusion, predictive coding, socioemotional selectivity). The reference implementation is `persona_math.py`.
+This document specifies the persona engine as a **formal probabilistic and computational model**. A persona is a sample from a defined joint distribution; cognitive and behavioural parameters are given by explicit equations grounded in the literature (prospect theory, hyperbolic discounting, scarcity theory, drift-diffusion, predictive coding, socioemotional selectivity).
+
+> **Status (read first).** This is a *structured, falsifiable hypothesis*, not a fitted model. The component equations are canonical and correctly stated; the **constants are not yet estimated from data**, and the model is over-parameterised. §15 (Limitations & Identifiability) is mandatory reading and classifies every parameter by whether it is literature-fixed, estimable, or set by design. v1.1 corrects six issues found in self-review: (1) the decision functional is now **dimensionless and bounded**; (2) parameters are classified by identifiability and the dual-process gate collapsed from 6 weights to 2; (3) the capital index is now a **cardinal log-money** quantity, with λ a *distribution*; (4) doc and code are **reconciled**; (5) the bandwidth function is **bounded and never saturates**; (6) IPF is correctly described as **margins-only**, with a joint-fidelity correction added. The reference implementation is `persona_math.py`.
 
 ---
 
@@ -8,263 +10,229 @@ This document specifies the persona engine as a **formal probabilistic and compu
 
 | Symbol | Meaning |
 |---|---|
-| `S, U, Λ, Rel, Cat, A, Γ` | state, urbanicity, language, religion, caste category, age, gender |
+| `S,U,Λ,Rel,Cat,A,Γ` | state, urbanicity, language, religion, caste category, age, gender |
 | `z ∈ [0,1]` | latent socioeconomic status (SES) |
-| `E, N, O` | education, NCCS class, occupation |
-| `c ∈ [0,1]` | capital-base index (from NCCS); `c=1` affluent, `c=0` destitute |
-| `h = (h_H,…,h_O)` | HEXACO trait means; `h_i(t)` an expressed state |
-| `σ_s ∈ [0,1]` | scarcity state (cash pressure) |
-| `λ, α, γ` | loss aversion, value curvature, probability-weighting curvature |
-| `β, δ` | present-bias and long-run discount factors (β–δ model) |
-| `ρ` | reference point (recent income / mental-account baseline) |
-| `B(t)` | available cognitive bandwidth at clock time `t` |
-| `ν, a, s` | drift rate, decision boundary, diffusion noise (DDM) |
-| `Π` | belief precision (inverse variance) |
-| `η` | inflation-elasticity coefficient |
-| `σ(·)` | logistic function `σ(x)=1/(1+e^{−x})`; `(x)_+ = max(0,x)`; `clip` = clamp to range |
+| `m, c ∈ [0,1]` | monthly-consumption proxy (₹); cardinal **log-money** capital index |
+| `h_i, h_i(t)` | HEXACO trait mean; expressed state on occasion `t` |
+| `σ_s ∈ [0,1]` | scarcity state | `λ, α, γ` | loss aversion, value curvature, prob-weighting curvature |
+| `β, δ, ρ` | present-bias, long-run discount, reference point |
+| `L(t), B(t)` | depletion load and available cognitive bandwidth at clock time `t` |
+| `μ, a, z0, s` | DDM drift, boundary separation, **start point**, noise |
+| `Π, η` | belief precision; inflation-elasticity coefficient |
+| `σ(·)` | logistic `1/(1+e^{−x})`; `(x)_+ = max(0,x)`; `clip` = clamp; `Φ_N` = standard-normal CDF |
 
 ---
 
 ## 1. The persona as a probabilistic graphical model
 
-A persona is a sample `P ∼ 𝒫(·)` from a directed factorization (Bayesian network):
+A persona is a sample `P ∼ 𝒫(·)` from a directed factorisation:
 
 ```
 𝒫(persona) = P(S)·P(U|S)·P(Λ|S)·P(Rel|S)·P(Cat|Rel)·P(A)·P(Γ)
-           · P(z | U,Cat) · δ(E − g_E(z)) · δ(N − g_N(z)) · P(O | z,U,Γ,A)
+           · P(z | U,Cat) · 𝟙[E = g_E(z)] · 𝟙[N = g_N(z)] · P(O | z,U,Γ,A)
            · P(Ψ | z,Rel,region) · P(K | N,O,z,A,Ψ) · P(C | O,A,z,region) · P(Π_para | Ψ,K)
 ```
 
-where Ψ = psyche, K = decision-knobs, C = contextual dynamics, Π_para = paradoxes. The arrows encode the **interlocking dependencies**: demographics → SES latent → education/class/occupation → psychology → decision parameters → context. Deterministic maps are written `δ(·)`; a final **consistency projection** `Φ` (Sec. 2.4) repairs impossible cells.
-
-**Dependency DAG (textual):**
-`S → {U, Λ, Rel}`, `Rel → Cat`, `{U,Cat} → z`, `z → {E, N, O, smartphone}`, `{A,Γ,U} → O`, `{z,Rel,region} → Ψ`, `{N,O,z,A,Ψ} → K`, `{O,A,z,region,K} → C`.
+Deterministic maps use the **Kronecker indicator** `𝟙[·]` (not a Dirac delta — `E,N` are discrete). A final **consistency projection** `Φ` (§2.4) repairs impossible cells. *Caveat:* the DAG is **top-down** (`z → E,N,O`); it does not model the reverse/joint determination of education and occupation, and the structure is hand-specified, not learned (§15).
 
 ---
 
-## 2. Demographic skeleton (conditional distributions)
+## 2. Demographic skeleton
 
-**2.1 Categorical draws.** State `S ∼ Cat(w)` with `w_s ∝` population share. Then
-`U|S ∼ Bernoulli(ρ_S)` (rural prob.), `Λ|S ∼ Cat(π_S)`, `Rel|S ∼ Cat(θ_S)`, `Cat|Rel ∼ Cat(γ)`, `A ∼ Cat(a)`, age `∼ Uniform(band)`, `Γ ∼ Cat([.51,.485,.005])`.
+**2.1 Categorical draws.** `S ∼ Cat(w)`, `U|S ∼ Bernoulli(ρ_S)`, `Λ|S ∼ Cat(π_S)`, `Rel|S ∼ Cat(θ_S)`, `Cat|Rel ∼ Cat(γ)`, `A ∼ Cat(a)`, `Γ ∼ Cat([.51,.485,.005])`.
 
-**2.2 Latent SES.** A continuous status variable with structured mean:
-
-```
-z = clip01( μ_z + ε ),   ε ∼ N(0, σ_z²),  σ_z = 0.20
-μ_z = 0.50 + βU·𝟙[urban] + βC·1{Cat}
-βU = +0.12 (urban) / −0.08 (rural);  βC = +0.06 (General), −0.06 (SC/ST), 0 (OBC)
-```
-
-**2.3 Deterministic SES maps.** Education and class are **quantile thresholds** of `z`:
+**2.2 Latent SES.** To avoid Gaussian-clipping point masses, use a **logit-normal** latent:
 
 ```
-E = g_E(z):  z<.12 → none; <.35 → some; <.55 → Class10; <.70 → Class12; <.90 → graduate; else postgraduate
-N = g_N(z) = NCCS[ ⌊15 z⌋ ]   over the ordered ladder E3<E2<E1<D<D<C2<C2<C1<C1<B2<B2<B1<A3<A2<A1
-c = capital index = (rank(N) )/14 ∈ [0,1]
+z = σ( ζ ),   ζ ∼ N( μ_ζ , σ_ζ² ),   σ_ζ = 0.9
+μ_ζ = logit(0.50) + βU·𝟙[urban] + βC·1{Cat},   βU = ±0.5,  βC ∈ {+0.3,0,−0.3}
 ```
 
-**2.4 Occupation + the consistency projection Φ.** Occupation is drawn from an SES- and context-conditioned set, then projected to remove contradictions:
+`z ∈ (0,1)` smoothly, no boundary atoms.
+
+**2.3 SES maps.** `E = g_E(z)` and `N = g_N(z)` are quantile thresholds of `z` (the cut-points are stipulated design choices — Class C, §15).
+
+**2.4 Cardinal capital index (corrected).** Replace the ordinal `rank(N)/14` with a **log-money** index, since the utility of money is approximately logarithmic. Let `m = MPCE(N)` be a median monthly-consumption proxy per class:
 
 ```
-O₀ ∼ Cat( occ-pool(z, U, Γ, A) )
-Φ:  if E ∈ {graduate, postgraduate} ∧ tier(O₀)=manual  ⟹  O ← pivot to {clerical, teaching, skilled self-employment}
-    if tier(O)=corporate ∧ E ∈ {none, some, Class10}   ⟹  E ← graduate
+c = clip(  ( ln m − ln m_min ) / ( ln m_max − ln m_min ) ,  0, 1 ),   m_min=4000, m_max=120000 (₹)
 ```
 
-`Φ` is idempotent and guarantees `P(graduate ∧ manual-labour)=0` — the structural fix that eliminated the "graduate mason" failure class.
+`c` is now cardinal and interpretable, not an equal-spacing assumption on ordinal labels.
+
+**2.5 Occupation + consistency projection Φ.**
+
+```
+O₀ ∼ Cat( occ-pool(z,U,Γ,A) )
+Φ:  E ∈ {grad,PG} ∧ tier(O₀)=manual  ⟹  O ← pivot{clerical, teaching, skilled self-employment}
+    tier(O)=corporate ∧ E ∈ {none,some,Class10} ⟹ E ← graduate
+```
+
+`Φ` is idempotent ⇒ `P(graduate ∧ manual-labour)=0`.
 
 ---
 
 ## 3. Psyche: traits as density distributions
 
-HEXACO trait **means** are truncated Gaussians; some depend on `z`:
+Trait **means** are sampled with an explicit correlation structure (so the Schwartz/HEXACO coherence is not thrown away):
 
 ```
-h_i ∼ TN(μ_i, τ_i², 0, 1),   μ_O = 0.42 + 0.20 z   (openness rises with SES)
+h ∼ TN( μ(z,region), Σ_h ),   Σ_h ≠ diagonal   (e.g. H–A positive, O–Conscientiousness mild)
+μ_O = clip( 0.42 + 0.20 z )    (openness rises with SES; coefficient = Class B/C)
 ```
 
-Following Fleeson, a trait is a *distribution of states*; the **expressed state** on occasion `t` is re-sampled:
-
-```
-h_i(t) ∼ N(μ_i, ς_i²)            (within-person variance ς_i ≫ 0 ⇒ two equal-mean personas still differ)
-```
-
-Religiosity `r ∼ TN(μ_r(region), …)`, external locus `ℓ = clip01(0.5 + 0.2 r + ε)`, interdependence `ι`, power-distance `pd`, prior precision `Π ∼ TN(0.62,…)`, reflective disposition `R = clip01(0.25 + 0.50 z)`.
+Following Fleeson, the **expressed state** on occasion `t` is re-sampled `h_i(t) ∼ N(h_i, ς_i²)` — so two equal-mean personas still diverge, and behaviour ≠ trait.
 
 ---
 
 ## 4. Behavioural-economics core
 
-**4.1 Prospect-theory value function** (Tversky–Kahneman 1992), reference-dependent at `ρ`:
+**4.1 Prospect value** (Tversky–Kahneman 1992), reference-dependent at `ρ`, evaluated on **money normalised by the reference** so it is dimensionless:
 
 ```
-v(x) = (x−ρ)^α              if x ≥ ρ
-     = −λ · (ρ−x)^α         if x < ρ
+ṽ(x) = ( (x−ρ)/ρ )^α                if x ≥ ρ
+     = −λ · ( (ρ−x)/ρ )^α           if x < ρ
+α ≈ 0.88  (Class A, literature-fixed)
 ```
 
-with curvature `α ≈ 0.88` and **loss aversion as a function of the capital base** (the key scaling law):
+**Loss aversion as a distribution over the capital base** (not a deterministic law):
 
 ```
-λ(c) = clip( λ_min + (λ_max − λ_min)(1 − c) + ε_λ ,  1.0, 3.6 )
-λ_min = 2.0 (affluent),  λ_max = 3.0 (destitute)
+λ ∼ Normal( λ̄(c), s_λ² ),   λ̄(c) = λ_min + (λ_max−λ_min)(1−c),   λ_min=2.0, λ_max=3.0, s_λ=0.15
 ```
 
-So `λ` rises monotonically as wealth falls: B1 (`c≈0.73`) → `≈2.27`, C2 (`c≈0.43`) → `≈2.57`, E3 (`c=0`) → `≈3.0`. (A loss looms up to ~3× a matched gain for the very poor.)
+The earlier per-class "band table" is exactly the set of quantiles of this distribution. Note `λ̄` is a *modelling choice* on the cardinal `c`; the literature does not establish it as a law (§15).
 
-**4.2 Probability weighting** (Prelec): `w(p) = exp(−(−ln p)^γ)`, `γ ≈ 0.65` (overweights rare events).
+**4.2 Probability weighting** (single-parameter Prelec): `w(p)=exp(−(−ln p)^γ)`, `γ≈0.61` (Class A).
 
-**4.3 Quasi-hyperbolic (β–δ) discounting** (Laibson):
-
-```
-U = u₀ + β · Σ_{k≥1} δ^k u_k
-```
-
-with **present-bias decreasing in scarcity**:
+**4.3 Quasi-hyperbolic (β–δ) discounting** (Laibson), **used** in the multi-period evaluation (§11):
 
 ```
-β(σ_s) = clip( β_max − ψ·σ_s , 0.25, 0.95 ),   β_max=0.95, ψ=0.60
+U_intertemporal = u₀ + β·Σ_{k≥1} δ^k u_k,   β(σ_s)=clip(β_max − ψ σ_s, .25, .95),  δ=0.97/yr
 ```
 
-Under cash pressure `β→0.35`: the future is steeply discounted, "small cash now ≫ larger sum later."
+For one-shot offers the future benefit enters as `β·w(p)·ṽ(gain)` (single discounted term); δ governs multi-period streams only.
 
 ---
 
-## 5. Scarcity and the cognitive-bandwidth tax
+## 5. Scarcity → deliberation capacity (corrected wiring)
 
-Scarcity (Mullainathan–Shafir) imposes a measurable cognitive load. With scarcity state `σ_s`,
+The Mani et al. finding (~13 IQ-pt pre/post-harvest swing) is **converted explicitly** into a bandwidth penalty rather than left as flavour. Normalising IQ by a working-memory span of ~`Q=40` points:
 
 ```
-ΔIQ(σ_s) = −Δ_max · σ_s ,   Δ_max ≈ 13 points
+D_scar(σ_s) = (Δ_max / Q) · σ_s ,   Δ_max ≈ 13   ⇒  D_scar ∈ [0, 0.33]
 ```
 
-expressed as a normalized bandwidth penalty `D_scar = b_s·σ_s` (`b_s≈0.25`). The **time-of-day risk window** is the interval where bandwidth is minimal *and* the daily target is unmet (Sec. 6), the period of peak susceptibility to predatory offers.
+`D_scar` enters the bandwidth load `L(t)` (§6) and thus the deliberation gate (§7). (Caveat: the 13-pt figure is two-state, not a calibrated continuum — §15.)
 
 ---
 
-## 6. Somatic homeostasis: bandwidth over the day
+## 6. Somatic homeostasis: bounded bandwidth (corrected)
 
-Available cognitive bandwidth is depleted by physical fatigue, circadian phase, and scarcity:
+Cognitive bandwidth is now a **strictly positive, bounded, multiplicative** function of total depletion load `L(t)` — it never saturates at 0, preserving resolution in the evening fatigue regime. Physical exertion accrues **only during the shift window** `[t₀, t_end]` and then **recovers** at rate `ρ_rec` once work stops; without this windowing a monotone `D_phys` would push the argmin trivially to the last waking hour for *every* occupation, erasing trade structure:
 
 ```
-B(t) = clip01( B_max − D_phys(t) − D_circ(t) − D_scar )
-B_max = 1
-D_phys(t) = δ_p · ((t − t₀)_+)^p              (linear p=1; convex p>1 for aging manual labour)
-   aging-manual variant:  D_phys(t) = δ_p · ( e^{ρ_p (t−t₀)_+} − 1 )      (exponential cortisol build-up)
-D_circ(t) = A_c · ( 1 − cos( 2π (t − φ)/24 ) ) / 2 ,   φ ≈ 10:00 (alertness peak)
+L(t)     = D_phys(t) + D_circ(t) + D_scar
+work(t)  = ( min(t, t_end) − t₀ )_+                         (exertion accrued, frozen after shift)
+D_phys(t)= ( δ_p·work(t) − ρ_rec·(t−t_end)_+ )_+            (linear; aging-manual: δ_p·(e^{ρ_p·work}−1))
+D_circ(t)= A_c·(1 − cos(2π(t−φ)/24))/2,   φ ≈ 10:00
+B(t)     = B_max · exp( −L(t) )  ∈ (0, B_max]
 ```
 
-`t₀` = shift start. The **peak-exhaustion window** is `t* = argmin_t B(t)` — e.g. mason `≈17–19h`, farmer `≈11–15h` (heat), office `≈16–18h`. Below a threshold `θ_B`, the deliberation gate (Sec. 7) closes and the persona falls to System-1 heuristics.
+The shift window `[t₀, t_end]` is set per occupation (farmer 05–13, mason 08–18, vendor 07–21, driver 08–17, domestic 06–14, white-collar 09–18; Class C). The **peak-exhaustion hour is then computed, not looked up**: `t* = argmin_t B(t) = argmax_t L(t)` over the waking grid. This *emergently* reproduces the trade-specific peaks (farmer→13:00, mason→18:00, vendor→21:00, driver→17:00) that the v1.0 generator had hard-coded — so the lookup table is replaced by a mechanism, and **doc and code now compute the identical `argmin`** (the §4-drift reconciliation).
 
 ---
 
-## 7. Dual-process arbitration
+## 7. Dual-process arbitration (collapsed to 2 free parameters)
 
-The probability of engaging effortful System-2 deliberation is a logistic gate over stakes, time-pressure, bandwidth and disposition:
+A single linear **deliberation drive** `d`, then a 2-parameter logistic gate (the six ad-hoc weights are replaced by fixed design priors inside `d`, leaving only a slope and threshold to estimate):
 
 ```
-p_S2 = σ( w₀ + w_B(B(t) − θ_B) + w_R·R + w_K·stakes − w_T·time_pressure − w_F·(1−B(t)) )
+d = κ_K·stakes + κ_R·R − κ_T·time_pressure − κ_F·(1−B(t))     (design priors κ_•, Class C)
+p_S2 = σ( s_g · ( d − θ_g ) )                                 (free: slope s_g, threshold θ_g — Class B)
 ```
 
-If `Bernoulli(p_S2)=1` → full prospect-theoretic evaluation (Sec. 8). Else → fast heuristic: satisfice to the first option clearing an aspiration level, anchored on the status quo. Stress/fatigue/scarcity all *lower* `p_S2` (push toward habit), as observed.
+`Bernoulli(p_S2)=1` ⇒ System-2 (full evaluation, §8/§11); else System-1 (satisfice on the status quo).
 
 ---
 
-## 8. Choice as drift-diffusion
+## 8. Choice as drift-diffusion, with a **start-point** somatic bias (corrected)
 
-Given two options, evidence accumulates `dX = ν dt + s dW`, deciding when `|X| ≥ a`. With a value difference `ΔV = U(offer) − U(status quo)` (Sec. 11):
+Evidence `dX = μ dt + s dW` accumulates between absorbing boundaries `{0, a}`, starting at `z0`. The **somatic marker biases the start point** (a prior, not the evidence rate), and we use the **correct general two-boundary hitting probability** (Cox–Miller):
 
 ```
-ν = κ_ν · ΔV / scale                         (drift ∝ value difference)
-X₀ = m · somatic_marker                       (gut "approach/avoid" start-point bias, Damasio)
-a = a₀ · ( 1 − ζ·(time_pressure + (1−B(t))) )  (boundary collapses under pressure/fatigue ⇒ faster, noisier)
-P(accept) = 1 / ( 1 + exp( −2 ν a / s² ) )     (logistic choice probability)
-E[RT] ≈ (a/ν)·tanh(a ν / s²) + t_nd ;   confidence ∝ |ν| a
+z0 = a · clip( 0.5 + b_m·marker , 0.05, 0.95 )     (marker<0 ⇒ z0<a/2 ⇒ avoid-prior)
+μ  = κ_ν · U                                        (drift ∝ the bounded value U, §11)
+P(accept) = ( e^{−2μ z0/s²} − 1 ) / ( e^{−2μ a/s²} − 1 ),   μ ≠ 0
+          = z0 / a,                                  μ = 0
+E[T_dec] = (z0/μ) − (a/μ)·( 1 − e^{−2μ z0/s²} )/( 1 − e^{−2μ a/s²} ) ;   confidence ∝ |μ|·a
 ```
 
-A negative somatic marker (e.g. a past debt memory) shifts `X₀` toward rejection *before* deliberation.
+With `z0=a/2` this reduces to `1/(1+e^{−μa/s²})`. A past-debt memory (`marker<0`) lowers acceptance *before* deliberation.
 
 ---
 
 ## 9. Belief updating and misinformation
 
-Beliefs are precision-weighted (Bayesian / predictive-coding) updates. Prior `(μ_b, Π_b)`, evidence `(e, Π_e)`:
+Conjugate precision-weighted (predictive-coding) update; prior `(μ_b,Π_b)`, evidence `(e,Π_e)`:
 
 ```
-μ_b' = (Π_b μ_b + Π_e e)/(Π_b + Π_e) ;   Π_b' = Π_b + Π_e
+μ_b' = (Π_b μ_b + Π_e e)/(Π_b+Π_e);   Π_b' = Π_b + Π_e
+P(accept claim) = σ( κ₁·trust + κ₂·ingroup − κ₃·Π_b·|e−μ_b| )
 ```
 
-An incoming claim (e.g. a WhatsApp forward) is **adopted** with probability
-
-```
-P(accept claim) = σ( κ₁·trust(source) + κ₂·ingroup_align − κ₃·Π_b·|e − μ_b| )
-```
-
-High prior precision `Π_b` down-weights discordant evidence ⇒ stubbornness/echo-chambering emerges from one mechanism; identity-aligned, high-trust sources clear the bar easily.
+High prior precision down-weights discordant evidence ⇒ stubbornness/echo-chambering from one mechanism.
 
 ---
 
 ## 10. Social diffusion and temporal horizon
 
-**10.1 Bounded-confidence opinion dynamics** (Deffuant). For neighbour `j` with tie weight `τ_ij`:
+**Bounded-confidence (Deffuant):** `o_i ← o_i + μ·τ_ij·(o_j−o_i)·𝟙[|o_i−o_j|<ε_ij]`, with `ε_ij` smaller across caste/religion lines.
 
-```
-o_i ← o_i + μ·τ_ij·(o_j − o_i) · 𝟙[ |o_i − o_j| < ε_ij ]
-```
-
-with the confidence bound `ε_ij` **smaller across caste/religion lines** ⇒ in-group convergence, cross-group hardening.
-
-**10.2 Socioemotional selectivity** (Carstensen). Perceived future time `T(age)` shrinks with age; the **novelty-resistance index**:
-
+**Socioemotional selectivity (Carstensen):**
 ```
 NRI = clip01( ν₀ + ν₁·𝟙[age≥58] − ν₂·h_O − ν₃·𝟙[educated] + ν₄·𝟙[rural] )
 horizon = Expansive (age<30) | Provisioning (30–57) | Constricted (≥58)
 ```
 
-Elders re-weight communion/legacy utility; youth weight exploration. This multiplies the novelty term in `U(X)`.
+---
+
+## 11. The unified decision functional (dimensionless & bounded — corrected)
+
+Every component is squashed onto a common `[−1,1]` scale, then combined with **non-negative weights that sum to 1**, so `U ∈ [−1,1]` and `P(accept)` has interpretable *levels*, not arbitrary ones:
+
+```
+g_econ  = tanh( β·w(p)·ṽ(gain) + ṽ(loss) )          (∈ (−1,1); ṽ already money/ρ-normalised, λ_eff used)
+g_frame = +1 (shield) | −1 (growth) | 0
+g_novel = − NRI · novelty                            (∈ [−1,0])
+U = θ_e·g_econ + θ_f·g_frame + θ_n·g_novel ,   θ_e+θ_f+θ_n = 1,   U ∈ [−1,1]
+μ = κ_ν·U  →  P(accept) via §8 (start-point DDM)
+SOCIAL DEFERENCE GATE (multiplicative, replaces the −∞ penalty):
+   if X threatens standing:  P(accept) ← g_consult · P(accept),   g_consult ≈ 0.05
+                              (≈0 until an offline consultation flips g_consult→1)
+MACRO COUPLING:  λ_eff = clip( λ·(1 + κ·η) , 1, 3.6 )   enters ṽ(loss);  κ≈0.55
+```
+
+`θ = (θ_e,θ_f,θ_n)` are the **only** free combination weights (Class C, design priors, e.g. `(0.6,0.2,0.2)`).
 
 ---
 
-## 11. The unified decision functional
+## 12. Population calibration & validation (corrected)
 
-For a stimulus `X` with attribute changes `Δ_k` (gains/losses vs. account references `ρ_k`) and probabilities `p_k`, the **subjective value** is multi-attribute prospect-weighted, adjusted by social and framing terms:
-
+**12.1 IPF fits MARGINS ONLY.** Given target margins `T_d` (Census/NFHS/PLFS), RAS reweighting:
 ```
-U(X) = Σ_k ω_k · w(p_k) · v(Δ_k − ρ_k ; α, λ(c))         (prospect core, mental accounts ω_k non-fungible)
-       + Φ_frame(X)                                       (+ if framed as "shield assets"; − if "aggressive growth")
-       − Φ_social(X)                                      (deference penalty if X threatens standing; → −∞ until consulted)
-       − Φ_novelty(X)·NRI                                 (penalty for unproven/novel options, scaled by horizon)
+repeat: for each dimension d, level m:  w(x) ← w(x)·T_d(m)/Σ_{x':x'_d=m} w(x')
 ```
+converges to the **maximum-entropy** fit *consistent with the specified margins* — it does **not** reproduce higher-order joint structure beyond what the margins imply. This is a real limitation given the project's joint-distribution thesis.
 
-The acceptance decision is then gated and accumulated:
+**12.2 Joint-fidelity correction (added).** To inject real pairwise+ dependence, follow IPF with one of:
+(i) a **Gaussian/vine copula** fit to the standardised attribute correlations from microdata, resampling the dependence while preserving the IPF margins; or (ii) **Gibbs resampling** over empirical conditional tables `P(x_d | x_{−d})`; or (iii) a conditional deep-generative model. The engine's design (z → conditionals) is a step toward (ii).
 
+**12.3 Prediction-powered inference (corrected rectifier).** With `n` labelled `(X_i,Y_i)∼target` and `N≫n` unlabelled with predictions `f`:
 ```
-P(accept X | persona, t) =  p_S2 · DDM(ΔV; a, ν, s)  +  (1 − p_S2) · heuristic(X)
-ΔV = U(X) − U(status quo)
+θ̂_PPI = (1/N) Σ_{j≤N} f(X_j)  +  (1/n) Σ_{i≤n} ( Y_i − f(X_i) )
 ```
-
-with `λ`, `β`, `B(t)`, `X₀`, `a` all instantiated from the persona's parameters and the clock. **Macro coupling:** under a price shock, `λ_eff = clip(λ(c)·(1 + κ·η), …)` (κ≈0.55), so the same offer is rejected harder in a high-inflation week.
-
----
-
-## 12. Population calibration and validation
-
-**12.1 Iterative Proportional Fitting (IPF).** Raw draws match marginals only approximately. Given target margins `T_d(·)` (Census/NFHS/PLFS) over dimensions `d`, reweight cells `x`:
-
-```
-repeat until convergence:
-   for each dimension d, for each margin level m:
-       w(x) ← w(x) · T_d(m) / Σ_{x'∈m} w(x')        ∀ x with x_d = m
-```
-
-Converges (RAS algorithm) to the maximum-entropy fit consistent with all margins; each persona carries a **representativeness weight** `w(x)`.
-
-**12.2 Prediction-powered inference (PPI)** for validation. With `n` real labels `Y_i` and model outputs `f(X_i)`, the bias-corrected population estimate is
-
-```
-θ̂_PPI = θ̂_synthetic − (1/n) Σ_{i=1}^n ( f(X_i) − Y_i )
-```
-
-unbiased and tighter than the small-sample estimate regardless of model error — the honest confidence interval the engine ships.
+unbiased *iff* the labelled set is i.i.d. from the target population (still the expensive ingredient).
 
 ---
 
@@ -272,36 +240,51 @@ unbiased and tighter than the small-sample estimate regardless of model error �
 
 ```
 GENERATE():
-  1. Sample skeleton  S,U,Λ,Rel,Cat,A,Γ        (Sec. 2.1)        O(1)
-  2. Sample z; map E,N,c; draw O₀; apply Φ      (Sec. 2.2–2.4)
-  3. Sample psyche h, r, ℓ, ι, pd, Π, R         (Sec. 3)
-  4. Compute decision parameters:
-        c→λ(c); σ_s→β(σ_s); ρ from income band;
-        somatic (t₀,δ_p,p,φ)→B(·) and t*;        (Sec. 4–8)
-        NRI(age,h_O,E,U)                          (Sec. 10.2)
-  5. Emit persona = (skeleton, psyche, decision_model, contextual, paradoxes, text projections)
-POPULATION(M):  draw M personas; run IPF to targets; attach weights; PPI-validate on holdout.
+  1. skeleton S,U,Λ,Rel,Cat,A,Γ                       O(1)
+  2. z (logit-normal); E,N,c (log-money); O₀; apply Φ
+  3. psyche h~TN(μ,Σ_h), states, r, ℓ, ι, pd, Π, R
+  4. decision params:  λ∼N(λ̄(c),s_λ); β(σ_s); ρ=MPCE; B(·),t*=argmin; NRI(age,h_O,E,U)
+  5. emit persona (+ decision_model, contextual, paradoxes, text projections)
+POPULATION(M): draw M; IPF to margins; joint-fidelity correction (§12.2); PPI-validate.
 ```
 
-Per-persona cost `O(1)`; population `O(M·I·D)` for `I` IPF sweeps over `D` dimensions. Generation throughput ≈ 1.5×10⁵ personas/min (pure sampling).
+Per-persona `O(1)`; population `O(M·I·D)` for `I` IPF sweeps; ≈1.5×10⁵ personas/min (pure sampling).
 
 ---
 
-## 14. Parameter table (defaults)
+## 14. Parameter table & identifiability classes
 
-| Param | Value | Param | Value |
-|---|---|---|---|
-| `σ_z` (SES noise) | 0.20 | `α` (PT curvature) | 0.88 |
-| `λ_min, λ_max` | 2.0, 3.0 | `γ` (Prelec) | 0.65 |
-| `β_max, ψ` | 0.95, 0.60 | `δ` (long-run) | 0.97 |
-| `Δ_max` (scarcity IQ) | 13 | `b_s` | 0.25 |
-| `B_max, θ_B` | 1.0, 0.45 | `φ` (circadian peak) | 10:00 |
-| `a₀` (DDM boundary) | 1.0 | `ζ` (boundary collapse) | 0.4 |
-| `κ_ν` (drift gain) | 1.2 | `s` (DDM noise) | 0.6 |
-| `κ` (macro→λ) | 0.55 | `NRI` base/age/edu | 0.35 / +0.45 / −0.10 |
+| Param | Value | **Class** |
+|---|---|---|
+| `α` (PT curvature) | 0.88 | **A** literature-fixed |
+| `γ` (Prelec) | 0.61 | **A** |
+| `δ` (annual discount) | 0.97 | **A** |
+| `Δ_max` (scarcity IQ) | 13 | **A** |
+| `φ` (circadian peak) | 10:00 | **A** |
+| `λ_min, λ_max, s_λ` | 2.0, 3.0, 0.15 | **B** estimable |
+| `ψ` (present-bias slope) | 0.60 | **B** |
+| `κ_ν` (drift gain), `a`, `s` | 1.2, 1.0, 0.6 | **B** |
+| `s_g, θ_g` (gate) | — | **B** |
+| `κ_K,κ_R,κ_T,κ_F` (gate drive) | design | **C** fixed by fiat |
+| `θ_e,θ_f,θ_n` (U weights) | 0.6,0.2,0.2 | **C** |
+| `δ_p, ρ_rec` (exertion/recovery) | 0.04–0.08, 0.10 | **C** |
+| `[t₀,t_end]` (shift window) | per-occupation | **C** |
+| `b_m, b_s, ε_ij` | design | **C** |
 
-All constants are tunable and are the **fit targets** when calibrating against real Indian survey microdata.
+**Class A** = fixed from published estimates. **Class B** = estimable from a modest labelled choice set (hundreds–thousands of decisions). **Class C** = structurally non-identifiable from choice data alone ⇒ set by design and held fixed (not pretended to be fittable).
 
 ---
 
-*Reference implementation: `persona_math.py`. Every equation here is a function there; `evaluate_offer(persona, offer, hour)` composes Sections 4–11 into a single acceptance probability.*
+## 15. Limitations & honest caveats
+
+1. **Not a fitted model.** No constant has been estimated from real Indian behavioural data. The model **predicts nothing that has been empirically verified**; it is a falsifiable hypothesis awaiting calibration. Any quantitative output should be read as illustrative, not as a forecast.
+2. **Over-parameterised; many parameters non-identifiable.** Even after collapsing the gate to two parameters, several constants (Class C) cannot be recovered from choice data and are *fixed by design*. The §14 classes make this explicit rather than hiding it.
+3. **`λ̄(c)` is a modelling choice, not a law.** Loss aversion's status as a stable constant is itself disputed (Gal & Rucker 2018); the linear-in-log-money form is a plausible prior, presented as `λ ∼ Normal(λ̄(c), s_λ²)` with explicit uncertainty.
+4. **`U` levels are interpretable but uncalibrated.** Making `U` dimensionless (§11) fixes the *incoherence* of v1.0, but the *mapping* from `U` to real acceptance rates still requires calibration of `κ_ν, a, s` against observed choices.
+5. **IPF fits margins, not joints.** §12.1 is honest about this; real joint fidelity needs the §12.2 correction, which itself requires microdata.
+6. **Structural simplifications.** The DAG is top-down (no reverse education↔occupation causality); the two-process fatigue/alertness interaction is approximated additively-in-the-exponent; trait correlations `Σ_h` are stipulated, not estimated; the social/diffusion layer is single-shot here.
+7. **Sensitive attributes stay outside the validity envelope** (caste/religion/communal) until specifically validated, regardless of how the equations behave.
+
+The honest one-line summary: **correct canonical building blocks, a coherent (now dimensionally consistent) architecture, and a transparent ledger of what is fixed, estimable, or stipulated — but an uncalibrated hypothesis, not an empirically supported predictor, until the Class-B parameters are fit and the population is validated by PPI on real data.**
+
+*Reference implementation: `persona_math.py` (every equation a function; `evaluate_offer` composes §4–§11).*

@@ -60,15 +60,37 @@ GRAD={"a graduate degree","a postgraduate degree"}; LOWED={"no formal schooling"
 CLASS_DESC={"A1":"affluent","A2":"affluent","A3":"upper-middle","B1":"upper-middle","B2":"middle","C1":"lower-middle","C2":"lower-middle","D":"poor","E1":"very poor","E2":"very poor","E3":"very poor"}
 NCCS_BY_SES=["E3","E2","E1","D","D","C2","C2","C1","C1","B2","B2","B1","A3","A2","A1"]
 LAM={"A1":(1.9,2.05),"A2":(1.95,2.1),"A3":(2.0,2.1),"B1":(2.0,2.15),"B2":(2.1,2.25),"C1":(2.2,2.35),"C2":(2.25,2.4),"D":(2.4,2.65),"E1":(2.55,2.8),"E2":(2.6,2.9),"E3":(2.7,3.0)}
-# capital index c∈[0,1] and reference income per NCCS (see PERSONA_MATHEMATICAL_MODEL.md §2,§4)
-CAPIDX={"E3":0.0,"E2":0.1,"E1":0.2,"D":0.3,"C2":0.4,"C1":0.5,"B2":0.6,"B1":0.7,"A3":0.8,"A2":0.9,"A1":1.0}
+# reference income per NCCS (= MPCE proxy; see PERSONA_MATHEMATICAL_MODEL.md §2.4,§4)
 REF_INC={"A1":120000,"A2":90000,"A3":60000,"B1":45000,"B2":30000,"C1":20000,"C2":15000,"D":9000,"E1":7000,"E2":5500,"E3":4000}
-def peak_exh_hour(o):
-    if any(k in o for k in("mason","construction","daily-wage")): return 18.0
-    if "vendor" in o: return 21.0
-    if any(k in o for k in("farmer","cultivator","agricultural","dairy")): return 13.0
-    if any(k in o for k in("driver","rider")): return 17.0
-    return 17.0
+# §2.4 cardinal LOG-MONEY capital index c=clip((ln m−ln m_min)/(ln m_max−ln m_min),0,1)
+import math as _m
+_MMIN,_MMAX=4000.0,120000.0
+CAPIDX={k:round(max(0.0,min(1.0,(_m.log(v)-_m.log(_MMIN))/(_m.log(_MMAX)-_m.log(_MMIN)))),3) for k,v in REF_INC.items()}
+# §6 shift window [t0,t_end] per occupation → drives the emergent argmin peak-exhaustion hour
+_SHIFTS=[(("farmer","cultivator","agri","dairy","livestock"),(5.0,13.0)),
+         (("mason","construction","daily-wage","labour"),(8.0,18.0)),
+         (("vendor","hawker"),(7.0,21.0)),
+         (("driver","rider","cab","auto","truck","tractor"),(8.0,17.0)),
+         (("domestic",),(6.0,14.0))]
+def _shift_window(o):
+    ol=o.lower()
+    for keys,win in _SHIFTS:
+        if any(k in ol for k in keys): return win
+    return (9.0,18.0)
+def _bandwidth(t,t0,t_end,dp,aging,scar):
+    # §6 bounded B(t)=exp(-L); D_phys windowed+recovering, D_circ, D_scar
+    work=max(0.0,min(t,t_end)-t0)
+    exertion=dp*(_m.exp(0.35*work)-1.0) if aging else dp*work
+    dphys=max(0.0,exertion-0.10*max(0.0,t-t_end))
+    dcirc=0.35*(1.0-_m.cos(2*_m.pi*(t-10.0)/24.0))/2.0
+    dscar=(13.0/40.0)*scar
+    return _m.exp(-(dphys+dcirc+dscar))
+def peak_exh_hour(o,tier="manual",age=40,scarcity=0.0):
+    # §6 t* = argmin_t B(t) over the waking grid (doc & persona_math compute the same argmin)
+    t0,t_end=_shift_window(o); dp=0.08 if tier=="manual" else 0.04
+    aging=tier=="manual" and age>=45
+    grid=[h/2 for h in range(8,47)]            # 04:00–23:00 in 0.5h steps
+    return min(grid,key=lambda t:_bandwidth(t,t0,t_end,dp,aging,scarcity))
 OCC_RURAL_LOW=["agricultural labourer","small farmer","daily-wage labourer","dairy/livestock worker"]
 OCC_RURAL_MID=["owner-cultivator","kirana shopkeeper","mason","ASHA worker","tractor/truck driver","tailoring/boutique owner","tuition teacher","anganwadi worker"]
 OCC_URBAN_LOW=["daily-wage labourer","domestic worker","street vendor","construction worker","delivery rider"]
@@ -425,16 +447,18 @@ def build_persona():
         "adaptive_preference_shields":[{"unachievable_desire":desire,"rationalized_rejection":reject}],
         "dissonance_rewriting_strategy":drw}
     # ---- formal decision-model parameters (see PERSONA_MATHEMATICAL_MODEL.md / persona_math.py) ----
+    _t0,_tend=_shift_window(occ); _lammean=round(2.0+1.0*(1.0-CAPIDX.get(nccs,0.3)),3)
     dmodel={"capital_index":CAPIDX.get(nccs,0.3),
-        "prospect":{"alpha":0.88,"loss_aversion_lambda":loss_av,"prob_weight_gamma":0.65,"reference_income_inr":REF_INC.get(nccs,9000)},
+        "prospect":{"alpha":0.88,"loss_aversion_lambda":loss_av,"lambda_mean":_lammean,"s_lambda":0.15,"prob_weight_gamma":0.61,"reference_income_inr":REF_INC.get(nccs,9000)},
         "time":{"present_bias_beta":round(max(.25,.95-.6*scarcity),3),"long_run_delta":0.97},
-        "scarcity":{"state":round(scarcity,3),"iq_bandwidth_drop":round(-13*scarcity,1)},
-        "somatic":{"shift_start":8.0,"peak_exhaustion_hour":peak_exh_hour(occ),"depletion_rate":0.08 if tier=="manual" else 0.04,"convex_aging":tier=="manual" and age>=45},
+        "scarcity":{"state":round(scarcity,3),"bandwidth_load_D_scar":round((13.0/40.0)*scarcity,3),"iq_bandwidth_drop":round(-13*scarcity,1)},
+        "somatic":{"shift_start":_t0,"shift_end":_tend,"peak_exhaustion_hour":peak_exh_hour(occ,tier,age,scarcity),"depletion_rate":0.08 if tier=="manual" else 0.04,"convex_aging":tier=="manual" and age>=45},
         "dual_process":{"reflective_disposition":round(reflective,3)},
-        "ddm":{"boundary_a0":1.0,"drift_gain":1.2,"noise":0.6},
+        "ddm":{"boundary_a":1.0,"drift_gain":1.2,"noise":0.6,"b_m":0.30},
         "belief":{"prior_precision":round(precision,3)},
         "novelty_resistance_index":round(max(0.0,min(1.0,0.35+(0.45 if age>=58 else 0)-0.2*h["O"]-(0.1 if educated else 0)+(0.05 if rural else 0))),3),
-        "temporal_horizon":"Expansive" if age<30 else ("Constricted" if age>=58 else "Provisioning")}
+        "temporal_horizon":"Expansive" if age<30 else ("Constricted" if age>=58 else "Provisioning"),
+        "U_weights":{"theta_econ":0.6,"theta_frame":0.2,"theta_novel":0.2}}
     return {
      "id":str(uuid.uuid4()),"name":name,
      "identity":{"age":age,"gender":gender,"state":st,"region":region,"setting":"rural" if rural else "urban","language":lang,"dialect":dialect,"religion":religion,"community":category,"occupation":occ,"occupation_tier":tier,"education":education,"class_nccs":nccs,"income_band":cls},
