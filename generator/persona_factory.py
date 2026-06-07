@@ -495,7 +495,7 @@ def write_shard(recs,outdir,idx,mode="a"):
         for r in recs: f.write(json.dumps(r,ensure_ascii=False)+"\n")
 def manifest(outdir,total,rate):
     with open(os.path.join(outdir,"_manifest.json"),"w",encoding="utf-8") as f:
-        json.dump({"updated_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),"total_personas":total,"generator":"persona_factory v0.8 (occupation-tier + education gate)","last_rate_per_min":round(rate,1)},f,indent=2)
+        json.dump({"updated_utc":datetime.now(timezone.utc).isoformat(timespec="seconds"),"total_personas":total,"generator":"persona_factory v1.1 (four-tier; embedded decision_model; gender/childless-bleed scrubbed)","last_rate_per_min":round(rate,1)},f,indent=2)
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",default="personas"); ap.add_argument("--count",type=int,default=0); ap.add_argument("--daemon",action="store_true")
