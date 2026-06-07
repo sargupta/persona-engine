@@ -40,7 +40,7 @@ def get(p, path):
 
 
 def read(path, limit):
-    files = sorted(glob.glob(os.path.join(path, "*.jsonl"))) if os.path.isdir(path) else [path]
+    files = sorted(f for f in glob.glob(os.path.join(path, "*.jsonl")) if not os.path.basename(f).startswith("_")) if os.path.isdir(path) else [path]
     rows = []
     for fn in files:
         for line in open(fn, encoding="utf-8"):

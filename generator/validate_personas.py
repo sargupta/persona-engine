@@ -71,7 +71,8 @@ def check(p):
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument("path"); ap.add_argument("--examples",type=int,default=2); ap.add_argument("--fail-on-any",action="store_true")
     a=ap.parse_args()
-    files=sorted(glob.glob(os.path.join(a.path,"*.jsonl"))) if os.path.isdir(a.path) else [a.path]
+    # Exclude underscore-prefixed sidecar files (_validation_ledger.jsonl, etc.) — they are metric/metadata, not personas.
+    files=sorted(f for f in glob.glob(os.path.join(a.path,"*.jsonl")) if not os.path.basename(f).startswith("_")) if os.path.isdir(a.path) else [a.path]
     if not files: sys.exit("no .jsonl files found at "+a.path)
     total=0; counts={r:0 for r,_ in RULES}; egs={r:[] for r,_ in RULES}
     for fn in files:

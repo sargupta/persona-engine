@@ -64,7 +64,7 @@ def main():
                     help="skip a group within a stratum below this n (noise floor)")
     ap.add_argument("--out", default="fairness_report.json")
     a = ap.parse_args()
-    files = sorted(glob.glob(os.path.join(a.path, "*.jsonl"))) if os.path.isdir(a.path) else [a.path]
+    files = sorted(f for f in glob.glob(os.path.join(a.path, "*.jsonl")) if not os.path.basename(f).startswith("_")) if os.path.isdir(a.path) else [a.path]
     if not files:
         sys.exit("no .jsonl found")
 
