@@ -12,3 +12,6 @@ node_modules/
 
 # portable git bundle artifact
 *.bundle
+
+# local push helper (not versioned)
+push_to_github.command
