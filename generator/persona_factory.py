@@ -60,6 +60,15 @@ GRAD={"a graduate degree","a postgraduate degree"}; LOWED={"no formal schooling"
 CLASS_DESC={"A1":"affluent","A2":"affluent","A3":"upper-middle","B1":"upper-middle","B2":"middle","C1":"lower-middle","C2":"lower-middle","D":"poor","E1":"very poor","E2":"very poor","E3":"very poor"}
 NCCS_BY_SES=["E3","E2","E1","D","D","C2","C2","C1","C1","B2","B2","B1","A3","A2","A1"]
 LAM={"A1":(1.9,2.05),"A2":(1.95,2.1),"A3":(2.0,2.1),"B1":(2.0,2.15),"B2":(2.1,2.25),"C1":(2.2,2.35),"C2":(2.25,2.4),"D":(2.4,2.65),"E1":(2.55,2.8),"E2":(2.6,2.9),"E3":(2.7,3.0)}
+# capital index c∈[0,1] and reference income per NCCS (see PERSONA_MATHEMATICAL_MODEL.md §2,§4)
+CAPIDX={"E3":0.0,"E2":0.1,"E1":0.2,"D":0.3,"C2":0.4,"C1":0.5,"B2":0.6,"B1":0.7,"A3":0.8,"A2":0.9,"A1":1.0}
+REF_INC={"A1":120000,"A2":90000,"A3":60000,"B1":45000,"B2":30000,"C1":20000,"C2":15000,"D":9000,"E1":7000,"E2":5500,"E3":4000}
+def peak_exh_hour(o):
+    if any(k in o for k in("mason","construction","daily-wage")): return 18.0
+    if "vendor" in o: return 21.0
+    if any(k in o for k in("farmer","cultivator","agricultural","dairy")): return 13.0
+    if any(k in o for k in("driver","rider")): return 17.0
+    return 17.0
 OCC_RURAL_LOW=["agricultural labourer","small farmer","daily-wage labourer","dairy/livestock worker"]
 OCC_RURAL_MID=["owner-cultivator","kirana shopkeeper","mason","ASHA worker","tractor/truck driver","tailoring/boutique owner","tuition teacher","anganwadi worker"]
 OCC_URBAN_LOW=["daily-wage labourer","domestic worker","street vendor","construction worker","delivery rider"]
@@ -415,6 +424,17 @@ def build_persona():
     para={"value_action_gaps":[{"stated_value":values[0],"trigger_condition":vg[0],"fallback_behavior":vg[1]}],
         "adaptive_preference_shields":[{"unachievable_desire":desire,"rationalized_rejection":reject}],
         "dissonance_rewriting_strategy":drw}
+    # ---- formal decision-model parameters (see PERSONA_MATHEMATICAL_MODEL.md / persona_math.py) ----
+    dmodel={"capital_index":CAPIDX.get(nccs,0.3),
+        "prospect":{"alpha":0.88,"loss_aversion_lambda":loss_av,"prob_weight_gamma":0.65,"reference_income_inr":REF_INC.get(nccs,9000)},
+        "time":{"present_bias_beta":round(max(.25,.95-.6*scarcity),3),"long_run_delta":0.97},
+        "scarcity":{"state":round(scarcity,3),"iq_bandwidth_drop":round(-13*scarcity,1)},
+        "somatic":{"shift_start":8.0,"peak_exhaustion_hour":peak_exh_hour(occ),"depletion_rate":0.08 if tier=="manual" else 0.04,"convex_aging":tier=="manual" and age>=45},
+        "dual_process":{"reflective_disposition":round(reflective,3)},
+        "ddm":{"boundary_a0":1.0,"drift_gain":1.2,"noise":0.6},
+        "belief":{"prior_precision":round(precision,3)},
+        "novelty_resistance_index":round(max(0.0,min(1.0,0.35+(0.45 if age>=58 else 0)-0.2*h["O"]-(0.1 if educated else 0)+(0.05 if rural else 0))),3),
+        "temporal_horizon":"Expansive" if age<30 else ("Constricted" if age>=58 else "Provisioning")}
     return {
      "id":str(uuid.uuid4()),"name":name,
      "identity":{"age":age,"gender":gender,"state":st,"region":region,"setting":"rural" if rural else "urban","language":lang,"dialect":dialect,"religion":religion,"community":category,"occupation":occ,"occupation_tier":tier,"education":education,"class_nccs":nccs,"income_band":cls},
@@ -427,7 +447,7 @@ def build_persona():
      "motivations":{"explicit_drivers":drivers,"hidden_fears":fears},
      "stress_and_coping":{"primary_driver":sd2,"stress_trigger":trg,"coping":cop},
      "political_leaning":random.choice(POL_POOL)+" (coarse, sensitive — simulation only, not validated)",
-     "daily_rhythm":sch,"voice":voice,"eight_pillars":pillars,"cognitive_architecture":cog,
+     "daily_rhythm":sch,"voice":voice,"eight_pillars":pillars,"decision_model":dmodel,"cognitive_architecture":cog,
      "contextual_dynamics":cdyn,"psychological_paradoxes":para,"agent_guardrails":guardrails,
      "confidence":"interim (approximate priors, pre-validation; scaffold, not a validated predictor)",
     }
