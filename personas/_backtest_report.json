@@ -115,9 +115,9 @@
       "pass": true
     }
   ],
-  "brier_primary": 0.012338981762962963,
+  "brier_primary": 0.012346217893518521,
   "n_pass": 4,
   "n_total": 5,
   "directional_pass": true,
-  "samples": 300
+  "samples": 120
 }

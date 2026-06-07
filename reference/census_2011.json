@@ -24,5 +24,14 @@
       "rural": 0.688,
       "urban": 0.312
     }
+  },
+  "joints": {
+    "_format_note": "Each joint is keyed exactly as distribution_report.py prints it (e.g. 'identity.occupation_tier x identity.education'), and maps 'valueA|valueB' -> probability. Joints are where contamination hides (a graduate-degree mason is invisible in marginals); fill these from PLFS (occupation x education) and NFHS-5 (children x age) and they become hard gates.",
+    "_TODO": [
+      "identity.occupation_tier x identity.education  <- PLFS 2022-23 occupation x education cross-tab",
+      "background.marital_status x children_band        <- NFHS-5 children-ever-born by marital status",
+      "identity.state x identity.religion               <- Census 2011 C-1 by state",
+      "identity.gender x identity.occupation_tier        <- PLFS LFPR x occupation by sex"
+    ]
   }
 }

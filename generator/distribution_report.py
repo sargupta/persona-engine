@@ -167,14 +167,30 @@ def main():
                     f"COVERAGE_HOLE {key}: real values absent from corpus: {missing}")
         report["marginals"][key] = entry
 
+    ref_joints = ref.get("joints", {})
     for (fa, fb), ctr in joints.items():
         key = ".".join(fa) + " x " + (fb[-1] if fb[0] == "background" else ".".join(fb))
         top = ctr.most_common(12)
-        report["joints"][key] = {
+        entry = {
             "distinct_cells": len(ctr),
             "top_cells": [{"cell": list(c), "share": round(n / total, 5)} for c, n in top],
             "entropy_normalised": round(normalised_entropy(ctr), 4),
         }
+        # TV vs reference joint, if supplied. Reference cells keyed "valueA|valueB".
+        rj = ref_joints.get(key)
+        if rj:
+            emp = {f"{a_}|{b_}": v / total for (a_, b_), v in ctr.items()}
+            tvj = tv_distance(emp, rj)
+            entry["tv_vs_reference"] = round(tvj, 4)
+            entry["tv_status"] = "OK" if tvj <= a.tv_threshold else "FAIL"
+            if entry["tv_status"] == "FAIL":
+                report["flags"].append(
+                    f"JOINT_DRIFT {key}: TV {tvj:.3f} > {a.tv_threshold} vs reference")
+            missing = [k for k in rj if k not in emp]
+            if missing:
+                report["flags"].append(
+                    f"JOINT_COVERAGE_HOLE {key}: real cells absent: {missing[:8]}")
+        report["joints"][key] = entry
 
     json.dump(report, open(a.out, "w"), indent=2, default=str)
 
