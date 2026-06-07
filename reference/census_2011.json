@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "purpose": "Real ground-truth marginal distributions for L1 distributional validation (distribution_report.py --reference).",
+    "primary_source": "Census of India 2011 (Office of the Registrar General & Census Commissioner).",
+    "status": "STARTER — only the high-confidence, widely-published national marginals are filled in. VERIFY each figure against the primary source before using as a release gate, and add state/occupation/education joints from PLFS & NFHS-5.",
+    "notes": [
+      "religion: Census 2011, C-1 Population by Religious Community (national shares).",
+      "setting: Census 2011 rural/urban split (68.8% rural / 31.2% urban).",
+      "TODO: add state populations (A-2), literacy/education (C-8), occupation (B-series via PLFS), household size & children (NFHS-5), NCCS A1-E grid (IRS/MRSI).",
+      "These national marginals are a coarse first gate; the real discriminating power is in the joints (education|occupation|state) — add those next."
+    ]
+  },
+  "marginals": {
+    "identity.religion": {
+      "Hindu": 0.798,
+      "Muslim": 0.142,
+      "Christian": 0.023,
+      "Sikh": 0.017,
+      "Buddhist": 0.007,
+      "Jain": 0.004,
+      "Other": 0.009
+    },
+    "identity.setting": {
+      "rural": 0.688,
+      "urban": 0.312
+    }
+  }
+}
